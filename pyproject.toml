@@ -1,0 +1,34 @@
+[project]
+name = "examen"
+version = "0.1.0"
+description = "A research agent that checks its own work against an answer sheet it cannot touch."
+requires-python = ">=3.11"
+license = { text = "MIT" }
+readme = "README.md"
+keywords = ["research-agent", "multi-agent", "llm-evaluation", "citations", "self-improving"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.optional-dependencies]
+claude = ["anthropic>=1.0"]
+
+[project.scripts]
+examen = "examen.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+examen = ["data/*.json"]
+
+[project.urls]
+Homepage = "https://github.com/patkusch/examen"
+Issues = "https://github.com/patkusch/examen/issues"
