@@ -83,6 +83,8 @@ The built-in stand-in examiner fails, which is the point of the test:
 | A made-up detail tacked on | 0 of 7 |
 | **True claims it wrongly rejected** | **2 of 15 reworded ones** |
 
+Real local models fail too. gemma3 12B gets 87% right but passes 27% of false claims; gemma3 4B passes 33%, including 6 of 7 claims with a made-up detail added. Neither rejected a true claim. Details in [docs/runs](docs/runs/2026-10-27-gemma3-calibration.md).
+
 **Wrongly rejecting a true sentence is not harmless.** The loop removes sentences the examiner rejects, so a true fact gets deleted. The fair test below caught exactly that.
 
 ## The fair test
