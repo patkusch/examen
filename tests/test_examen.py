@@ -50,6 +50,18 @@ class CorpusTests(unittest.TestCase):
         for q in CORPUS["questions"]:
             self.assertTrue(set(q["needs"]) <= ids)
 
+    def test_answers_are_on_the_pages_each_question_needs(self):
+        text = {d["id"]: d["text"].lower() for d in CORPUS["docs"]}
+        for q in CORPUS["questions"]:
+            needed = " ".join(text[i] for i in q["needs"])
+            for k in q["keys"]:
+                self.assertIn(k, needed, f"{q['id']}: {k!r} is not on its listed pages")
+
+    def test_ids_and_questions_are_unique(self):
+        ids = [d["id"] for d in CORPUS["docs"]]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertEqual(len({q["id"] for q in CORPUS["questions"]}), len(CORPUS["questions"]))
+
     def test_search_finds_the_right_page(self):
         top = FixtureSource().search("puffin colony breeding pairs", 2)
         self.assertEqual(top[0].id, "little-mar")
