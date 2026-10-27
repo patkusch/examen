@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use examen, please cite it as below."
+title: "examen: a research agent that checks its own work against an answer sheet it cannot touch"
+authors:
+  - name: "Patricia Kusch"
+    alias: patkusch
+repository-code: "https://github.com/patkusch/examen"
+license: MIT
+version: 0.3.0
+date-released: 2026-10-27
+keywords:
+  - research agent
+  - citation checking
+  - LLM evaluation
+  - self-improving agents
