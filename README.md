@@ -118,6 +118,7 @@ pip install git+https://github.com/patkusch/examen   # no dependencies
 examen demo                                          # offline, about a second
 examen bench --writer fake-flawed                    # the four set-ups, offline
 examen calibrate --examiner fake                     # test an examiner
+examen show receipts                                 # what the newest run decided, round by round
 ```
 
 With real models (a local one through [Ollama](https://ollama.com), or Claude):
@@ -126,7 +127,7 @@ With real models (a local one through [Ollama](https://ollama.com), or Claude):
 examen calibrate --examiner claude:claude-opus-5-5
 examen run "Who built the first Eddystone lighthouse?" --source wikipedia \
     --writer ollama:gemma3:12b --examiner claude:claude-opus-5-5
-examen bench --writer ollama:gemma3:12b --examiner claude:claude-opus-5-5
+examen bench --writer ollama:gemma3:12b --examiner claude:claude-opus-5-5 --require-trusted
 ```
 
 Two options borrowed from other projects:

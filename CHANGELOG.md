@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 (2026-10-27)
+- `--require-trusted` refuses to run with an examiner that has not passed `examen calibrate`.
+- Warns when the writer and examiner come from the same model family.
+- `examen show` prints what a past run decided, round by round.
+- `make calibrate-local` and `make bench-live` for real models; the live bench is guarded.
+- SECURITY.md (pages are untrusted) and CITATION.cff.
 - Each repeated scoring uses its own seed, so the measured wobble and self-agreement are real for local models (before, every repeat gave the identical answer).
 - `calibrate --runs` sets how many seeded passes judge each claim.
 - First real-model results: gemma3 12B and 4B tested as examiners; neither passes (27% and 33% of false claims let through). See docs/runs.

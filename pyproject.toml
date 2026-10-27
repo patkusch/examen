@@ -1,6 +1,6 @@
 [project]
 name = "examen"
-version = "0.2.0"
+version = "0.3.0"
 description = "A research agent that checks its own work against an answer sheet it cannot touch."
 requires-python = ">=3.11"
 license = { text = "MIT" }

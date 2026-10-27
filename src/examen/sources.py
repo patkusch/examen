@@ -92,7 +92,7 @@ class WikipediaSource(Source):
 
     name = "wikipedia"
     API = "https://en.wikipedia.org/w/api.php"
-    AGENT = "examen/0.2 (https://github.com/patkusch/examen)"
+    AGENT = "examen/0.3 (https://github.com/patkusch/examen)"
     MAX_CHARS = 8000  # long articles are cut; the writer and the examiner both see the same cut text
 
     def __init__(self, cache_dir: str | Path = ".examen-cache", opener=None) -> None:
