@@ -115,8 +115,9 @@ class Run:
 
     # ------------------------------------------------------------ examiner side
 
-    def _score(self, report: str, items: list[str], repeats: int = 1) -> list[Score]:
-        out = [score_report(report, self.q, items, self.examiner, self.source) for _ in range(repeats)]
+    def _score(self, report: str, items: list[str], repeats: int = 1, first_seed: int = 0) -> list[Score]:
+        out = [score_report(report, self.q, items, self.examiner.vary(first_seed + i), self.source)
+               for i in range(repeats)]
         self.examiner_tokens += sum(s.tokens for s in out)
         return out
 
@@ -182,8 +183,9 @@ class Run:
 
     def _final(self, report: str, checklist: Checklist) -> dict:
         """A fresh scoring that took no part in choosing the version, plus the held-back items."""
-        fresh = mean_score(self._score(report, checklist.visible, self.cfg.repeats))
-        hidden = self._score(report, checklist.hidden)[0] if checklist.hidden else None
+        # Seeds no earlier scoring used, so this check is independent of the ones that picked the version.
+        fresh = mean_score(self._score(report, checklist.visible, self.cfg.repeats, first_seed=100))
+        hidden = self._score(report, checklist.hidden, first_seed=200)[0] if checklist.hidden else None
         out = dict(fresh.metrics)
         out["hidden_pass"] = hidden.metrics["visible_pass"] if hidden else None
         if self.keys:

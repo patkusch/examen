@@ -1,4 +1,4 @@
-receipts/
+receipts*/
 .examen-cache/
 __pycache__/
 *.egg-info/

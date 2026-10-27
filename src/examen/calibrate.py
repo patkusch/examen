@@ -79,8 +79,10 @@ def make_labels(n: int = 60, seed: int = 7) -> list[dict]:
 
 
 def calibrate(examiner: Model, labels: list[dict], runs: int = 2) -> dict:
-    verdicts = [[truthy(examiner.ask("support", {"claim": x["claim"], "source": x["source"]}).data.get("supported"))
-                 for x in labels] for _ in range(runs)]
+    """Accuracy and error rates come from the first run; self-agreement compares runs made with
+    different seeds, so it shows how often the examiner changes its mind on the same claim."""
+    verdicts = [[truthy(examiner.vary(r).ask("support", {"claim": x["claim"], "source": x["source"]})
+                        .data.get("supported")) for x in labels] for r in range(runs)]
     first = verdicts[0]
     right = sum(v == x["label"] for v, x in zip(first, labels))
     fp = sum(v and not x["label"] for v, x in zip(first, labels))

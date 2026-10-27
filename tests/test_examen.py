@@ -273,6 +273,41 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(H.got["format"], "json")
         self.assertEqual(H.got["messages"][0]["role"], "system")
 
+    def test_repeats_use_different_seeds_so_wobble_is_real(self):
+        seeds = []
+
+        class H(BaseHTTPRequestHandler):
+            def do_POST(self):
+                body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                seed = body["options"]["seed"]
+                seeds.append(seed)
+                # A judge whose answer depends on its seed, like a real sampled model.
+                out = json.dumps({"message": {"content": json.dumps({"supported": seed == 7, "pass": True})},
+                                  "prompt_eval_count": 1, "eval_count": 1}).encode()
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(out)
+
+            def log_message(self, *a):
+                pass
+
+        srv = HTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            judge = OllamaModel("gemma3", host=f"http://127.0.0.1:{srv.server_port}", seed=7)
+            res = calibrate(judge, make_labels(4), runs=2)
+            self.assertEqual(len(set(seeds)), 2)
+            self.assertLess(res["self_agreement"], 1.0)
+            seeds.clear()
+            runner = Run(Q1["question"], FakeModel(), judge, FixtureSource(preload=True), Config(loop=False))
+            scores = runner._score("The light was automated in 1979 [seld-lighthouse].", [], repeats=3)
+        finally:
+            srv.shutdown()
+            srv.server_close()
+        self.assertEqual(len(set(seeds)), 3)
+        self.assertEqual(noise(scores)["supported"], 1)
+        self.assertEqual(judge.seed, 7)  # the original is untouched; repeats use copies
+
     def test_wikipedia_source_caches(self):
         calls = []
 

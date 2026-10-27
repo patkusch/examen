@@ -7,6 +7,7 @@ the loop has something real to catch. `ollama:<model>` and `claude:<model>` are 
 """
 from __future__ import annotations
 
+import copy
 import json
 import os
 import re
@@ -28,6 +29,11 @@ class Model:
 
     def ask(self, role: str, payload: dict) -> Reply:
         raise NotImplementedError
+
+    def vary(self, i: int) -> "Model":
+        """The same model for repeat number i. Models with a fixed seed must change it, or every
+        repeat gives the identical answer and the measured wobble is always zero."""
+        return self
 
 
 # ---------------------------------------------------------------- offline stand-in
@@ -155,6 +161,13 @@ class OllamaModel(LLM):
         self.model, self.temperature, self.seed, self.timeout = model, temperature, seed, timeout
         self.host = (host or os.environ.get("OLLAMA_HOST") or "http://127.0.0.1:11434").rstrip("/")
         self.name = "ollama:" + model
+
+    def vary(self, i: int) -> "OllamaModel":
+        if i == 0:
+            return self
+        twin = copy.copy(self)
+        twin.seed = self.seed + 1000 * i
+        return twin
 
     def complete(self, system: str, user: str) -> tuple[str, int]:
         body = {
