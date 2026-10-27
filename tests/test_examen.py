@@ -364,6 +364,15 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("stopped", err)
 
+    def test_show_reads_the_newest_run(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._run("demo", "--receipts", d)
+            code, out, _ = self._run("show", d)
+            self.assertEqual(code, 0)
+            self.assertIn("first draft", out)
+            self.assertIn("stopped:", out)
+            self.assertEqual(self._run("show", d + "/nothing")[0], 1)
+
     def test_calibrate_runs_option(self):
         with tempfile.TemporaryDirectory() as d:
             code, out, _ = self._run("calibrate", "--receipts", d, "--pairs", "8", "--runs", "3")

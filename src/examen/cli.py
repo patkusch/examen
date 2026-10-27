@@ -52,6 +52,28 @@ def _print_run(r: dict) -> None:
     print("note: 'backed by its source' means the page says it, not that it is true.")
 
 
+def _show(folder: Path) -> int:
+    if not (folder / "rounds.jsonl").exists():
+        runs = sorted(p.parent for p in folder.glob("*/rounds.jsonl"))
+        if not runs:
+            print(f"no run receipts in {folder}", file=sys.stderr)
+            return 1
+        folder = runs[-1]
+    print(f"run: {folder}")
+    print(f"{'round':<7}{'kept':<6}{'backed':>8}{'no source':>11}{'checklist':>11}{'tokens':>8}  why")
+    for line in (folder / "rounds.jsonl").read_text().splitlines():
+        r = json.loads(line)
+        m = r["metrics"]
+        print(f"{r['round']:<7}{'yes' if r['kept'] else 'no':<6}{m['supported']:>4g}/{m['claims']:<3}"
+              f"{m['uncited']:>11}{m['visible_pass']:>11.0%}{r['agent_tokens']:>8}  {r['why']}")
+    final = folder / "final.json"
+    if final.exists():
+        f = json.loads(final.read_text())
+        print(f"stopped: {f['stopped']}; held-back checklist passed: "
+              + ("-" if f["final"]["hidden_pass"] is None else f"{f['final']['hidden_pass']:.0%}"))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="examen", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -100,11 +122,17 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--runs", type=int, default=2, help="times each claim is judged, each with its own seed")
     common(c, writer=False)
 
+    sh = sub.add_parser("show", help="print what a past run decided, round by round, from its receipts")
+    sh.add_argument("folder", help="a run folder (holds rounds.jsonl), or a receipts folder to show the newest run")
+
     lab = sub.add_parser("labels", help="write the labelled claim pairs to a file")
     lab.add_argument("out")
     lab.add_argument("--pairs", type=int, default=60)
 
     a = ap.parse_args(argv)
+
+    if a.cmd == "show":
+        return _show(Path(a.folder))
 
     if a.cmd == "labels":
         Path(a.out).write_text("\n".join(json.dumps(x) for x in make_labels(a.pairs)) + "\n")
