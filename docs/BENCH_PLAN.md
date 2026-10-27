@@ -4,8 +4,10 @@ Written 2026-10-27, before any real-model run, so the pass mark cannot be moved 
 
 ## Order
 
-1. `examen calibrate --examiner <model>`. If the examiner fails (under 85% right, or more than 10% of
-   false claims passed), stop. Pick a different examiner. Do not run the bench with it.
+1. `examen calibrate --examiner <model>`. If the examiner fails (under 85% right, more than 10% of
+   false claims passed, or more than 15% of true claims rejected), stop. Pick a different examiner.
+   Do not run the bench with it. (Bar tightened 2026-10-27, before any real run: a wrongly rejected
+   true claim makes the loop delete a true fact.)
 2. `examen bench --writer <writer> --examiner <examiner> --budget 60000`, all ten questions, three
    scorings per first draft.
 3. Commit the receipts folder for the run.
@@ -24,3 +26,10 @@ Written 2026-10-27, before any real-model run, so the pass mark cannot be moved 
 - Tokens spent are reported next to every result. A gain that costs three times the tokens is reported as exactly that.
 - The held-back checklist score is reported. If it falls while the visible score rises, the writer
   is learning the test, and that result is reported as a failure.
+
+## Added 2026-10-27, still before any real run
+
+- Run the bench a second time with `--terse`, and a third time with `--cite-pass`. Each one is
+  judged by the same rules against the plain run.
+- Report every question where the loop lost an answer-key fact the no-loop arm had, with the
+  sentence that was cut and the examiner's verdict on it.

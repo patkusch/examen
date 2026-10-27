@@ -14,7 +14,7 @@ import urllib.request
 from dataclasses import dataclass
 
 from .prompts import parse_json, render
-from .text import claims, content, overlap, sentences
+from .text import claims, content, overlap, sentences, strip_cites
 
 
 @dataclass
@@ -61,7 +61,9 @@ class FakeModel(Model):
 
     def _plan(self, p):
         gaps = p.get("gaps") or []
-        return {"subquestions": gaps[:3] if gaps else clauses(p["question"])}
+        parts = clauses(p["question"])
+        kind = "straightforward" if len(parts) <= 1 else "breadth"
+        return {"kind": kind, "subquestions": gaps[:3] if gaps else parts}
 
     def _notes(self, p):
         q = p["subquestion"]
@@ -70,9 +72,11 @@ class FakeModel(Model):
             for i, s in enumerate(sentences(d["text"])):
                 score = overlap(q, s)
                 if score > 0:
-                    cand.append((-score, len(cand), d["id"], s))
+                    cand.append((-score, len(cand), d["id"], d["title"], s))
         cand.sort()
-        return {"notes": [{"source": src, "quote": s, "point": s} for _, _, src, s in cand[:3]]}
+        # The stand-in "rewords" with a lead-in naming the page; crude, but it is not a paste.
+        return {"notes": [{"source": src, "quote": s, "point": f"As the {title} page puts it, {s}"}
+                          for _, _, src, title, s in cand[:3]]}
 
     def _write(self, p):
         fb = p.get("feedback") or {}
@@ -90,6 +94,21 @@ class FakeModel(Model):
         paras = [" ".join(keep[i:i + 3]) for i in range(0, len(keep), 3)]
         return {"report": "\n\n".join(paras)}
 
+    def _write_plain(self, p):
+        return {"report": strip_cites(self._write(p)["report"])}
+
+    def _cite(self, p):
+        out = []
+        for para in p["report"].split("\n\n"):
+            sents = []
+            for sent in sentences(para):
+                note = max(p["notes"], key=lambda n: overlap(sent, n["point"]), default=None)
+                if note and overlap(sent, note["point"]) >= 0.9:
+                    sent = sent.rstrip(".") + f" [{note['source']}]."
+                sents.append(sent)
+            out.append(" ".join(sents))
+        return {"report": "\n\n".join(out)}
+
     def _write_from_docs(self, p):
         topics = (p.get("feedback") or {}).get("open_points") or clauses(p["question"])
         notes = []
@@ -103,8 +122,7 @@ class FakeModel(Model):
         nums = re.findall(r"\d[\d,]*", p["claim"])
         if any(n not in p["source"] for n in nums):
             return {"supported": False}
-        best = max((overlap(p["claim"], s) for s in sentences(p["source"])), default=0.0)
-        return {"supported": best >= 0.7}
+        return {"supported": overlap(p["claim"], p["source"]) >= 0.8}
 
     def _check(self, p):
         item, report = p["item"], p["report"]
@@ -152,6 +170,8 @@ class OllamaModel(LLM):
 
 
 FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"}
+EFFORT_MODELS = FALLBACK_MODELS | {"claude-fable-5", "claude-sonnet-5", "claude-haiku-5-5", "claude-opus-4-8",
+                                   "claude-opus-4-7", "claude-opus-4-6", "claude-sonnet-4-6"}
 
 
 class ClaudeModel(LLM):
@@ -165,16 +185,20 @@ class ClaudeModel(LLM):
         self.client = anthropic.Anthropic()
         self.model, self.effort = model, effort
         self.name = "claude:" + model
+        self.served: set[str] = set()  # which model actually answered, in case a fallback stepped in
 
     def complete(self, system: str, user: str) -> tuple[str, int]:
-        extra = {}
+        extra: dict = {}
         if self.model in FALLBACK_MODELS:
-            extra = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+            extra |= {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+        if self.model in EFFORT_MODELS:
+            extra["output_config"] = {"effort": self.effort}
         msg = self.client.beta.messages.create(
             model=self.model, max_tokens=16000, system=system,
-            messages=[{"role": "user", "content": user}],
-            output_config={"effort": self.effort}, **extra,
+            messages=[{"role": "user", "content": user}], **extra,
         )
+        self.served.add(msg.model)
+        # A reply cut off at max_tokens is still passed on; if its JSON is broken, ask() retries once.
         if msg.stop_reason == "refusal":
             return "{}", msg.usage.input_tokens + msg.usage.output_tokens
         text = "".join(b.text for b in msg.content if b.type == "text")

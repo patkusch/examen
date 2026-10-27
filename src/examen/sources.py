@@ -38,6 +38,14 @@ class Source:
     def get(self, doc_id: str) -> Doc | None:
         return self.seen.get(doc_id)
 
+    def resolve(self, token: str) -> Doc | None:
+        """A citation may name a page by id or by title; only pages fetched in this run count."""
+        doc = self.seen.get(token)
+        if doc:
+            return doc
+        t = token.strip().lower()
+        return next((d for d in self.seen.values() if d.title.lower() == t), None)
+
     def _search(self, query: str, k: int) -> list[Doc]:
         raise NotImplementedError
 
@@ -51,7 +59,7 @@ class FixtureSource(Source):
 
     name = "fixture"
 
-    def __init__(self, corpus: dict | None = None) -> None:
+    def __init__(self, corpus: dict | None = None, preload: bool = False) -> None:
         super().__init__()
         corpus = corpus or load_corpus()
         self.docs = [Doc(d["id"], d["title"], d["text"], f"fixture://{d['id']}") for d in corpus["docs"]]
@@ -60,8 +68,10 @@ class FixtureSource(Source):
         df = Counter(w for toks in self.tokens for w in set(toks))
         n = len(self.docs)
         self.idf = {w: math.log(1 + (n - c + 0.5) / (c + 0.5)) for w, c in df.items()}
-        # The scorer may look up any cited id, not only ones searched this run.
-        self.seen = {d.id: d for d in self.docs}
+        # Normally a page can only be cited once it has been found by a search in this run.
+        # `preload` opens every page at once, for tests and calibration.
+        if preload:
+            self.seen = {d.id: d for d in self.docs}
 
     def _search(self, query: str, k: int) -> list[Doc]:
         q = content(query)
@@ -82,7 +92,8 @@ class WikipediaSource(Source):
 
     name = "wikipedia"
     API = "https://en.wikipedia.org/w/api.php"
-    AGENT = "examen/0.1 (https://github.com/patkusch/examen)"
+    AGENT = "examen/0.2 (https://github.com/patkusch/examen)"
+    MAX_CHARS = 8000  # long articles are cut; the writer and the examiner both see the same cut text
 
     def __init__(self, cache_dir: str | Path = ".examen-cache", opener=None) -> None:
         super().__init__()
@@ -105,19 +116,15 @@ class WikipediaSource(Source):
         return data
 
     def _search(self, query: str, k: int) -> list[Doc]:
-        hits = self._cached("s:" + query, {"action": "query", "list": "search", "srsearch": query, "srlimit": k})
+        hits = self._cached(f"s:{k}:{query}", {"action": "query", "list": "search", "srsearch": query, "srlimit": k})
         ids = [str(h["pageid"]) for h in hits.get("query", {}).get("search", [])]
-        if not ids:
-            return []
-        pages = self._cached("p:" + "|".join(ids), {
-            "action": "query", "prop": "extracts", "explaintext": 1, "exlimit": "max", "pageids": "|".join(ids),
-        })
-        found = pages.get("query", {}).get("pages", {})
         out = []
         for pid in ids:
-            p = found.get(pid)
+            # One page per request: the API returns full text for only one page at a time.
+            page = self._cached("p:" + pid, {"action": "query", "prop": "extracts", "explaintext": 1, "pageids": pid})
+            p = page.get("query", {}).get("pages", {}).get(pid)
             if p and p.get("extract"):
-                out.append(Doc(f"w{pid}", p["title"], p["extract"],
+                out.append(Doc(f"w{pid}", p["title"], p["extract"][: self.MAX_CHARS],
                                "https://en.wikipedia.org/?curid=" + pid))
         return out
 

@@ -5,6 +5,8 @@
   team      helpers        helpers + revises
 
 Changing two things at once proves nothing, so each of the two ideas gets its own column.
+Every arm has the same token cap, checked before each call; what each arm actually spent is
+reported next to its results, because the cap is a ceiling, not a target.
 Correctness is checked against an answer key, not against what the report cited.
 """
 from __future__ import annotations
@@ -20,14 +22,14 @@ ARMS = [("single", False), ("single", True), ("team", False), ("team", True)]
 
 
 def bench(writer: Model, examiner: Model, budget: int = 60000, limit: int | None = None,
-          receipts: Receipts | None = None, repeats: int = 3) -> dict:
+          receipts: Receipts | None = None, repeats: int = 3, terse: bool = False, cite_pass: bool = False) -> dict:
     receipts = receipts or Receipts(None)
     questions = load_corpus()["questions"][:limit]
     rows = []
     for q in questions:
         for mode, loop in ARMS:
             arm = f"{mode}{'+loop' if loop else ''}"
-            cfg = Config(mode=mode, loop=loop, budget=budget, repeats=repeats)
+            cfg = Config(mode=mode, loop=loop, budget=budget, repeats=repeats, terse=terse, cite_pass=cite_pass)
             r = run(q["question"], writer, examiner, FixtureSource(), cfg, receipts.sub(f"{q['id']}-{arm}"), q["keys"])
             f = r["final"]
             row = {"question": q["id"], "arm": arm, "correct": f["correct"], "key_recall": f["key_recall"],

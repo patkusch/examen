@@ -83,3 +83,60 @@ Stop rules: hard budget, plus patience on the outside numbers, never on the agen
 
 Cut from version 1 on the critic's advice: parallel helpers, a population of versions, pairwise
 tie-breaks, RACE, judge panels, arXiv, citation precision.
+
+## 6. Second round: review, prior art and how others build it (2026-10-27)
+
+Three more agents ran after version 0.1: one reviewed the code, one read how the leading projects
+are built (source files and papers), one searched for work closest to examen.
+
+### Closest prior art
+
+| Work | What it checks | Loops | Tests its own judge |
+|---|---|---|---|
+| DeepVerifier ([paper](https://arxiv.org/abs/2601.15808)) | Deep-research answers against a rubric of 13 failure types | Yes | Yes |
+| OpenScholar | Citation-worthy sentences, final grounding pass | Yes | Partly |
+| PaperQA2 ([paper](https://arxiv.org/abs/2409.13740)) | Literature answers, contradictions | No revise loop | Expert sample |
+| RARR ([paper](https://arxiv.org/abs/2210.08726)) | Each claim vs retrieved evidence; tracks how much text survives editing | One pass | Human study |
+| DeepResearch Bench FACT | Statement and page pairs, scraped page | No | Some |
+| Citation-verifier benchmark ([alphaXiv](https://www.alphaxiv.org/abs/2607.08700)) | 624 labelled pairs, ~60% adversarially edited | No | It is the judge test; best F1 about 0.75 |
+
+Nothing found combines a frozen checklist with hidden items, a noise-aware keep rule, a tested
+examiner and a 2x2 bench on an invented corpus. A 2026 study ([arXiv 2609.28614](https://arxiv.org/abs/2609.28614))
+found agents given detailed failure feedback evaded checks in 40.5% of cases vs 20.3% with a
+generic rejection, which is why `--terse` exists.
+
+### Techniques borrowed
+
+| From | Technique | In examen |
+|---|---|---|
+| Anthropic research system | Classify the question (straightforward, depth, breadth) and size the search effort | Planner returns a kind; 1, 3 or 5 searches |
+| Anthropic CitationAgent | Citations added in a separate pass; text must stay byte-identical | `--cite-pass`; code rejects any word change |
+| Google TTD-DR | Draft first, then search against the draft's gaps | Unsupported sentences become next round's search topics |
+| ALCE, DEER | Separate uncited claims from wrongly cited ones | `uncited`, `unknown_cites`, `over_cited` reported apart |
+| Citation-verifier benchmark | Test the judge on adversarial edits, report error types | Calibration has six kinds incl. negation, padding and reworded truths |
+
+Considered and not built yet: evidence IDs per outline section (WebWeaver), context rebuild per
+researcher (ReSum), several candidate drafts per round (TTD-DR self-evolution), splitting into
+atomic facts (FActScore/VeriScore).
+
+### Review findings and fixes
+
+| Finding | Fix |
+|---|---|
+| Wikipedia returned 1 page per search (API returns one full extract per request) | One request per page; pages cut at 8,000 characters; cache key includes k |
+| A rewrite won by adding more supported sentences; pasted text was counted but ignored | The supported count only guards against drops; gains come from checklist or share; any rise in pasted sentences rejects the rewrite |
+| Headings were never checked | Headings are scored like any sentence |
+| `[a, b]`, `【x】`, `(source: x)`, titles not read as citations | All read; titles resolve to pages; unknown ids counted apart |
+| Citing many pages gave many chances to pass; facts from two pages could never pass | One check against all cited pages together; more than three cited counts as unsupported |
+| A held-back item ("gives a source for every sentence") leaked through the uncited list | Items about sources are never held back |
+| Single run compared to a 3-run mean; numbers could slide down round by round | Every version scored three times; no drop below the best or the first draft |
+| Budget only checked between rounds | Checked before every call |
+| Pages never searched could be cited | Only pages found during the run count |
+| "true"/"yes" answers read as no | Read as yes |
+
+### A finding from the fixes
+
+With the stand-in examiner, the loop on the one-agent set-up cut a true sentence the examiner had
+wrongly rejected, and lost an answer (8 of 10 instead of 9 of 10). Calibration only used copied
+true claims, so it never measured this. It now includes reworded true claims and a limit on
+rejected truths.

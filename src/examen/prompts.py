@@ -10,8 +10,11 @@ SYSTEM = {
         "Each must be checkable from the report alone. Reply as JSON: {\"items\": [\"...\"]}"
     ),
     "plan": (
-        "You plan research. Break the question into 2 to 4 short search questions. If gaps are listed, "
-        "plan only for those gaps. Reply as JSON: {\"subquestions\": [\"...\"]}"
+        "You plan research. First decide what kind of question it is: \"straightforward\" (one fact, one search), "
+        "\"depth\" (one topic seen from a few angles) or \"breadth\" (several separate parts). Then write short "
+        "search questions: 1 for straightforward, up to 3 for depth, up to 5 for breadth. If gaps are listed, plan "
+        "only for those gaps; a gap may be a sentence that still needs a source. "
+        "Reply as JSON: {\"kind\": \"...\", \"subquestions\": [\"...\"]}"
     ),
     "notes": (
         "You are a researcher. Read the documents and take notes that help answer the search question. "
@@ -23,8 +26,20 @@ SYSTEM = {
         "You write a short research report that answers the question using only the notes. Put the source id in "
         "square brackets at the end of every factual sentence, like this: The bridge opened in 1866 [doc-id]. "
         "Use only ids that appear in the notes. If a previous report and feedback are given, fix exactly what the "
-        "feedback lists: remove or correct unsupported sentences, add a source to uncited ones, and cover the open "
-        "points. Keep everything else that was supported. Reply as JSON: {\"report\": \"...\"}"
+        "feedback lists: remove or correct unsupported sentences, add a source to uncited ones, put sentences listed as copied into your own words, "
+        "and cover the open points. Keep everything else that was supported. Reply as JSON: {\"report\": \"...\"}"
+    ),
+    "write_plain": (
+        "You write a short research report that answers the question using only the notes. Do not add citations; "
+        "another step adds them. Every sentence must be a fact a note supports. If a previous report and feedback "
+        "are given, fix exactly what the feedback lists and keep everything else that was supported. "
+        "Reply as JSON: {\"report\": \"...\"}"
+    ),
+    "cite": (
+        "You add citations to a finished report. Do not change a single word of it. After each sentence that a note "
+        "directly supports, put that note's source id in square brackets before the full stop, like this: "
+        "The bridge opened in 1866 [doc-id]. Leave a sentence without a citation if no note supports it. "
+        "Reply as JSON: {\"report\": \"...\"}"
     ),
     "write_from_docs": (
         "You research and write in one step. Answer the question using only the documents. Put the document id in "

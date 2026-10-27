@@ -25,7 +25,7 @@ Q1 = CORPUS["questions"][0]
 class TextTests(unittest.TestCase):
     def test_sentences_skip_headings_and_bullets(self):
         out = sentences("# Title\n- First one. Second one.\n1. Third")
-        self.assertEqual(out, ["First one.", "Second one.", "Third"])
+        self.assertEqual(out, ["Title", "First one.", "Second one.", "Third"])
 
     def test_claims_strip_citations(self):
         c = claims("The tower is 31 metres tall [seld-lighthouse]. Hi.")
@@ -75,7 +75,7 @@ class PromptTests(unittest.TestCase):
 
 class ScoreTests(unittest.TestCase):
     def setUp(self):
-        self.src = FixtureSource()
+        self.src = FixtureSource(preload=True)
         self.ex = FakeModel()
 
     def test_made_up_and_unsourced_sentences_are_caught(self):
@@ -150,11 +150,11 @@ class LoopTests(unittest.TestCase):
             rounds = [json.loads(x) for x in (Path(d) / "rounds.jsonl").read_text().splitlines()]
             self.assertTrue((Path(d) / "report.md").exists())
             self.assertTrue((Path(d) / "checklist.json").exists())
-        self.assertLess(rounds[0]["metrics"]["supported_share"], 1.0)
         self.assertTrue(rounds[1]["kept"])
         self.assertNotIn("Experts widely agree", r["report"])
         self.assertNotIn(UNCITED, r["report"])
-        self.assertEqual(r["final"]["supported_share"], 1.0)
+        self.assertGreater(r["final"]["supported_share"], rounds[0]["metrics"]["supported_share"])
+        self.assertEqual(r["final"]["uncited"], 0)
         self.assertTrue(r["final"]["correct"])
 
     def test_writer_never_sees_held_back_items(self):
@@ -214,6 +214,8 @@ class BenchAndCalibrationTests(unittest.TestCase):
     def test_labels_are_balanced_and_known(self):
         labels = make_labels(40)
         self.assertEqual(sum(x["label"] for x in labels), 20)
+        kinds = {x["kind"] for x in labels}
+        self.assertEqual(kinds, {"verbatim", "reworded", "number", "name", "negation", "padding"})
         for x in labels:
             if not x["label"]:
                 self.assertNotIn(x["claim"], x["source"])
@@ -230,7 +232,9 @@ class BenchAndCalibrationTests(unittest.TestCase):
             name = "oracle"
 
             def ask(self, role, payload):
-                return Reply({"supported": payload["claim"] in payload["source"]}, 1)
+                claim = payload["claim"].split(": ", 1)[-1] if payload["claim"].startswith("The ") and \
+                    " page records this: " in payload["claim"] else payload["claim"]
+                return Reply({"supported": claim in payload["source"]}, 1)
 
         self.assertTrue(calibrate(Oracle(), make_labels(60))["trusted"])
 
@@ -314,6 +318,174 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("team+loop", out)
         self.assertIn("same on", out)
+
+
+class ReviewFixTests(unittest.TestCase):
+    """One test per hole the code review found, plus the ideas borrowed from other projects."""
+
+    def setUp(self):
+        self.src = FixtureSource(preload=True)
+        self.ex = FakeModel()
+
+    def score(self, report, items=()):
+        return score_report(report, "q", list(items), self.ex, self.src)
+
+    def test_citation_styles_real_models_use(self):
+        from examen.text import find_cites
+        self.assertEqual(find_cites("x [a, b] y [c; d]"), ["a", "b", "c", "d"])
+        self.assertEqual(find_cites("x 【ostra】 y (source: kessick)"), ["ostra", "kessick"])
+        s = self.score("The light was automated in 1979 [Seld Lighthouse].")
+        self.assertEqual(s.metrics["supported"], 1)
+        s = self.score("The light was automated in 1979 [1].")
+        self.assertEqual((s.metrics["supported"], s.metrics["unknown_cites"]), (0, 1))
+
+    def test_made_up_heading_is_checked(self):
+        s = self.score("# The lighthouse was designed by Ada Lovelace in 1802 [seld-lighthouse]")
+        self.assertEqual((s.metrics["claims"], s.metrics["supported"]), (1, 0))
+
+    def test_abbreviations_do_not_split_and_cited_sentences_do(self):
+        self.assertEqual(len(sentences("Dr. Varga built it in 1871. It is tall.")), 2)
+        c = claims("The light was automated in 1979 [seld-lighthouse]. it was also painted pink by pirates.")
+        self.assertEqual([x.cites for x in c], [["seld-lighthouse"], []])
+
+    def test_too_many_citations_count_as_unsupported(self):
+        s = self.score("The light was automated in 1979 [seld-lighthouse, ostra, kessick, wool-fair].")
+        self.assertEqual((s.metrics["supported"], s.metrics["over_cited"]), (0, 1))
+
+    def test_a_claim_from_two_pages_passes_when_both_are_cited(self):
+        claim = "Thomas Varga built the Seld Lighthouse and trained under Helen Ashdown"
+        self.assertEqual(self.score(claim + " [thomas-varga].").metrics["supported"], 1)
+        two = self.score(claim + " and it was automated in 1979 [thomas-varga, seld-lighthouse].")
+        self.assertEqual(two.metrics["supported"], 1)
+        self.assertEqual(self.score(claim + " and it was automated in 1979 [thomas-varga].").metrics["supported"], 0)
+
+    def test_pages_not_found_this_run_cannot_be_cited(self):
+        fresh = FixtureSource()
+        s = score_report("The light was automated in 1979 [seld-lighthouse].", "q", [], self.ex, fresh)
+        self.assertEqual(s.metrics["supported"], 0)
+        fresh.search("lighthouse automated", 4)
+        s = score_report("The light was automated in 1979 [seld-lighthouse].", "q", [], self.ex, fresh)
+        self.assertEqual(s.metrics["supported"], 1)
+
+    def test_yes_and_true_strings_count(self):
+        from examen.text import truthy
+        self.assertTrue(truthy("Yes") and truthy("true") and truthy(True))
+        self.assertFalse(truthy("no") or truthy(None) or truthy(1))
+
+    def test_more_pasting_is_not_kept(self):
+        best = {"supported": 6, "visible_pass": 0.5, "supported_share": 0.75, "copied": 0}
+        cand = {"supported": 8, "visible_pass": 1.0, "supported_share": 1.0, "copied": 3}
+        ok, why = accept(best, cand, {"supported": 0, "visible_pass": 0, "supported_share": 0})
+        self.assertFalse(ok)
+        self.assertIn("pasted", why)
+
+    def test_a_bigger_count_alone_is_not_a_gain(self):
+        best = {"supported": 6, "visible_pass": 0.5, "supported_share": 1.0}
+        cand = {"supported": 9, "visible_pass": 0.5, "supported_share": 1.0}
+        self.assertFalse(accept(best, cand, {"supported": 0, "visible_pass": 0, "supported_share": 0})[0])
+
+    def test_slow_slide_below_the_first_draft_is_refused(self):
+        first = {"supported": 6, "visible_pass": 0.5, "supported_share": 0.8}
+        best = {"supported": 5, "visible_pass": 0.75, "supported_share": 0.8}
+        cand = {"supported": 4, "visible_pass": 1.0, "supported_share": 0.8}
+        margin = {"supported": 1, "visible_pass": 0, "supported_share": 0}
+        ok, why = accept(best, cand, margin, first)
+        self.assertFalse(ok)
+        self.assertIn("first draft", why)
+
+    def test_items_about_sources_are_never_held_back(self):
+        for q in CORPUS["questions"]:
+            cl, _ = make_checklist(self.ex, q["question"])
+            self.assertFalse(any("source" in h for h in cl.hidden), q["id"])
+            self.assertTrue(cl.hidden, q["id"])
+
+    def test_budget_is_checked_before_every_call(self):
+        r = run(Q1["question"], FakeModel(flawed=True), FakeModel(), FixtureSource(), Config(budget=100))
+        self.assertEqual(r["stopped"], "budget spent")
+        self.assertLess(r["agent_tokens"], 1000)
+        r = run(Q1["question"], FakeModel(flawed=True), FakeModel(), FixtureSource(), Config(budget=3000))
+        self.assertLessEqual(r["agent_tokens"], 3000 + 2500)  # at most one call past the cap
+
+    def test_citation_pass_adds_tags_only(self):
+        r = run(Q1["question"], FakeModel(flawed=True), FakeModel(), FixtureSource(), Config(cite_pass=True),
+                keys=Q1["keys"])
+        self.assertIn("[seld-lighthouse]", r["report"])
+        self.assertEqual(r["cite_pass_rejected"], 0)
+
+        class Sneaky(FakeModel):
+            def _cite(self, p):
+                return {"report": p["report"] + " The lighthouse is haunted [seld-lighthouse]."}
+
+        r = run(Q1["question"], Sneaky(), FakeModel(), FixtureSource(), Config(cite_pass=True, loop=False))
+        self.assertEqual(r["cite_pass_rejected"], 1)
+        self.assertNotIn("haunted", r["report"])
+
+    def test_terse_feedback_names_no_checklist_item(self):
+        runner = Run(Q1["question"], FakeModel(flawed=True), FakeModel(), FixtureSource(), Config(terse=True))
+        runner.go()
+        told = [x["payload"]["feedback"] for x in runner.seen_by_writer if x["payload"].get("feedback")]
+        self.assertTrue(told)
+        for fb in told:
+            self.assertTrue(all(p == "Some parts of the question are not answered yet." for p in fb["open_points"]))
+
+    def test_failed_sentences_become_search_topics(self):
+        runner = Run(Q1["question"], FakeModel(flawed=True), FakeModel(), FixtureSource(), Config())
+        runner.go()
+        gaps = [x["payload"]["gaps"] for x in runner.seen_by_writer if x["role"] == "plan"]
+        self.assertTrue(any("Experts widely agree" in g for gs in gaps for g in gs))
+
+    def test_effort_follows_the_kind_of_question(self):
+        runner = Run("Who founded the Halvey Ferry Company?", FakeModel(), FakeModel(), FixtureSource(),
+                     Config(loop=False))
+        r = runner.go()
+        self.assertEqual(r["kind"], "straightforward")
+        self.assertEqual(sum(x["role"] == "notes" for x in runner.seen_by_writer), 1)
+
+    def test_wikipedia_fetches_each_page_and_cuts_long_ones(self):
+        calls = []
+
+        def opener(params):
+            calls.append(params)
+            if params.get("list") == "search":
+                return {"query": {"search": [{"pageid": 1}, {"pageid": 2}][: params["srlimit"]]}}
+            pid = params["pageids"]
+            return {"query": {"pages": {pid: {"title": f"P{pid}", "extract": "x. " * 9000}}}}
+
+        with tempfile.TemporaryDirectory() as d:
+            w = WikipediaSource(d, opener=opener)
+            docs = w.search("q", 2)
+            one = WikipediaSource(d, opener=opener).search("q", 1)
+        self.assertEqual([x.id for x in docs], ["w1", "w2"])
+        self.assertTrue(all("|" not in c.get("pageids", "") for c in calls))
+        self.assertEqual(len(docs[0].text), WikipediaSource.MAX_CHARS)
+        self.assertEqual(len(one), 1)  # a different k is a different search, not the cached one
+
+    def test_claude_sends_effort_only_where_supported(self):
+        from examen.models import ClaudeModel
+
+        class Msg:
+            stop_reason, model = "end_turn", "claude-opus-5-5"
+            content = [type("B", (), {"type": "text", "text": '{"pass": true}'})()]
+            usage = type("U", (), {"input_tokens": 5, "output_tokens": 2})()
+
+        sent = []
+        client = type("C", (), {})()
+        client.beta = type("B", (), {})()
+        client.beta.messages = type("M", (), {"create": lambda self, **kw: sent.append(kw) or Msg()})()
+        for model in ("claude-opus-5-5", "claude-3-haiku"):
+            m = object.__new__(ClaudeModel)
+            m.client, m.model, m.effort, m.name, m.served = client, model, "low", "claude:" + model, set()
+            self.assertEqual(m.ask("check", {"x": 1}).data, {"pass": True})
+        self.assertEqual(sent[0]["fallbacks"], "default")
+        self.assertIn("output_config", sent[0])
+        self.assertNotIn("output_config", sent[1])
+        self.assertNotIn("fallbacks", sent[1])
+
+    def test_demo_writes_where_it_is_told(self):
+        with tempfile.TemporaryDirectory() as d:
+            with redirect_stdout(io.StringIO()):
+                main(["demo", "--receipts", d])
+            self.assertTrue(any(Path(d).iterdir()))
 
 
 if __name__ == "__main__":

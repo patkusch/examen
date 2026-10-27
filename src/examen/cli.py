@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 from .bench import bench
-from .calibrate import FALSE_PASS_LIMIT, TRUST_BAR, calibrate, make_labels
+from .calibrate import FALSE_PASS_LIMIT, FALSE_REJECT_LIMIT, TRUST_BAR, calibrate, make_labels
 from .loop import Config, run
 from .models import load_model, model_name
 from .receipts import Receipts
@@ -27,16 +27,22 @@ def _trust_note(examiner: str, receipts_dir: str) -> str | None:
         return f"warning: examiner {examiner} has not been measured. Run: examen calibrate --examiner {examiner}"
     cal = json.loads(path.read_text())
     if not cal["trusted"]:
-        return (f"warning: examiner {examiner} scored {cal['accuracy']:.0%} on labelled claims and passed "
-                f"{cal['false_pass_rate']:.0%} of the false ones (bar: {TRUST_BAR:.0%} right, at most "
-                f"{FALSE_PASS_LIMIT:.0%} false passed). Treat its verdicts as rough.")
+        return (f"warning: examiner {examiner} scored {cal['accuracy']:.0%} on labelled claims, passed "
+                f"{cal['false_pass_rate']:.0%} of the false ones and rejected {cal['false_reject_rate']:.0%} of the "
+                f"true ones (bar: {TRUST_BAR:.0%} right, at most {FALSE_PASS_LIMIT:.0%} false passed, at most "
+                f"{FALSE_REJECT_LIMIT:.0%} true rejected). Treat its verdicts as rough: the loop will cut true "
+                f"sentences it wrongly rejects.")
     return None
 
 
 def _print_run(r: dict) -> None:
     f = r["final"]
+    if not r["held_back"]:
+        print("warning: the checklist was too short to hold any questions back, so there is no hidden check",
+              file=sys.stderr)
     print(f"\n{r['report']}\n")
-    print(f"rounds {r['rounds']} ({r['stopped']}); writer tokens {r['agent_tokens']}, examiner tokens {r['examiner_tokens']}")
+    print(f"rounds {r['rounds']} ({r['stopped']}); writer tokens {r['agent_tokens']} of {r['budget']}, "
+          f"examiner tokens {r['examiner_tokens']}")
     print(f"claims backed by their source: {f['supported']:g} of {f['claims']} ({f['supported_share']:.0%}); "
           f"no source given: {f['uncited']}")
     print(f"checklist passed: {f['visible_pass']:.0%} seen by the writer, "
@@ -56,8 +62,15 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--examiner", default="fake", help="the model that grades; best from a different family")
         p.add_argument("--receipts", default="receipts", help="folder for everything the run decided")
 
+    def loop_options(p):
+        p.add_argument("--terse", action="store_true",
+                       help="tell the writer only that points are missing, not which (harder to game)")
+        p.add_argument("--cite-pass", action="store_true",
+                       help="write without citations, then add them in a pass that may not change any words")
+
     d = sub.add_parser("demo", help="offline run on the invented islands, with a writer that makes mistakes")
     d.add_argument("--question", default=None)
+    d.add_argument("--receipts", default="receipts")
 
     r = sub.add_parser("run", help="research one question")
     r.add_argument("question")
@@ -67,12 +80,14 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--rounds", type=int, default=4)
     r.add_argument("--budget", type=int, default=60000)
     r.add_argument("--repeats", type=int, default=3)
+    loop_options(r)
     common(r)
 
     b = sub.add_parser("bench", help="the four set-ups on the invented-island questions, same budget")
     b.add_argument("--budget", type=int, default=60000)
     b.add_argument("--limit", type=int, default=None)
     b.add_argument("--repeats", type=int, default=3)
+    loop_options(b)
     common(b)
 
     c = sub.add_parser("calibrate", help="measure the examiner on claims with known answers")
@@ -103,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"question: {question}")
         print("writer: fake-flawed (adds one made-up sentence and one with no source)  examiner: fake")
         res = run(question, load_model("fake-flawed"), load_model("fake"), make_source("fixture"),
-                  Config(), _receipts("receipts", "demo"), q["keys"] if a.question is None else None)
+                  Config(), _receipts(a.receipts, "demo"), q["keys"] if a.question is None else None)
         _print_run(res)
         return 0
 
@@ -112,7 +127,8 @@ def main(argv: list[str] | None = None) -> int:
         print(note, file=sys.stderr)
 
     if a.cmd == "run":
-        cfg = Config(mode=a.mode, loop=not a.no_loop, max_rounds=a.rounds, budget=a.budget, repeats=a.repeats)
+        cfg = Config(mode=a.mode, loop=not a.no_loop, max_rounds=a.rounds, budget=a.budget, repeats=a.repeats,
+                     terse=a.terse, cite_pass=a.cite_pass)
         res = run(a.question, load_model(a.writer), load_model(a.examiner), make_source(a.source), cfg,
                   _receipts(a.receipts, "run"))
         _print_run(res)
@@ -120,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if a.cmd == "bench":
         res = bench(load_model(a.writer), load_model(a.examiner), a.budget, a.limit,
-                    _receipts(a.receipts, "bench"), a.repeats)
+                    _receipts(a.receipts, "bench"), a.repeats, terse=a.terse, cite_pass=a.cite_pass)
         print(f"{'set-up':<14}{'correct':>9}{'key found':>11}{'backed':>8}{'held-back':>11}{'tokens':>9}")
         for arm, s in res["summary"].items():
             hp = "-" if s["hidden_pass"] is None else f"{s['hidden_pass']:.0%}"
