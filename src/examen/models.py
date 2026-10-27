@@ -223,6 +223,17 @@ def model_name(spec: str) -> str:
     return "claude:claude-opus-5-5" if spec == "claude" else spec
 
 
+def family(spec: str) -> str | None:
+    """Rough model family: claude, gemma, llama, qwen... None for the offline stand-ins."""
+    name = model_name(spec)
+    if name.startswith("fake"):
+        return None
+    if name.startswith("claude:"):
+        return "claude"
+    m = re.match(r"[a-z]+", name.partition(":")[2].lower())
+    return m.group(0) if m else None
+
+
 def load_model(spec: str) -> Model:
     if spec in ("fake", "fake-flawed"):
         return FakeModel(flawed=spec == "fake-flawed")

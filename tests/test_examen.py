@@ -240,6 +240,14 @@ class BenchAndCalibrationTests(unittest.TestCase):
 
 
 class BackendTests(unittest.TestCase):
+    def test_family(self):
+        from examen.models import family
+        self.assertEqual(family("ollama:gemma3:12b"), "gemma")
+        self.assertEqual(family("ollama:gemma3:latest"), family("ollama:gemma3:12b"))
+        self.assertEqual(family("claude"), "claude")
+        self.assertNotEqual(family("ollama:llama3.1"), family("ollama:gemma3"))
+        self.assertIsNone(family("fake"))
+
     def test_load_model(self):
         self.assertEqual(load_model("fake").name, "fake")
         self.assertEqual(load_model("ollama:gemma3:4b").name, "ollama:gemma3:4b")

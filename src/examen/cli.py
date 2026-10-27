@@ -10,7 +10,7 @@ from pathlib import Path
 from .bench import bench
 from .calibrate import FALSE_PASS_LIMIT, FALSE_REJECT_LIMIT, TRUST_BAR, calibrate, make_labels
 from .loop import Config, run
-from .models import load_model, model_name
+from .models import family, load_model, model_name
 from .receipts import Receipts
 from .sources import load_corpus, make_source
 
@@ -128,6 +128,10 @@ def main(argv: list[str] | None = None) -> int:
         _print_run(res)
         return 0
 
+    if family(a.writer) and family(a.writer) == family(a.examiner):
+        print(f"warning: writer and examiner are both {family(a.writer)} models. Models favour writing like "
+              "their own, so the examiner may go easy on the writer. Use a different family if you can.",
+              file=sys.stderr)
     note = _trust_note(a.examiner, a.receipts)
     if note:
         print(note, file=sys.stderr)
