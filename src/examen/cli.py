@@ -61,6 +61,9 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--writer", default="fake", help="fake, fake-flawed, ollama:<model>, claude:<model>")
         p.add_argument("--examiner", default="fake", help="the model that grades; best from a different family")
         p.add_argument("--receipts", default="receipts", help="folder for everything the run decided")
+        if writer:
+            p.add_argument("--require-trusted", action="store_true",
+                           help="refuse to start unless the examiner has passed `examen calibrate`")
 
     def loop_options(p):
         p.add_argument("--terse", action="store_true",
@@ -128,6 +131,9 @@ def main(argv: list[str] | None = None) -> int:
     note = _trust_note(a.examiner, a.receipts)
     if note:
         print(note, file=sys.stderr)
+        if a.require_trusted:
+            print("stopped: --require-trusted is set and the examiner has not passed its test", file=sys.stderr)
+            return 2
 
     if a.cmd == "run":
         cfg = Config(mode=a.mode, loop=not a.no_loop, max_rounds=a.rounds, budget=a.budget, repeats=a.repeats,

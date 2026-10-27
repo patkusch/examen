@@ -347,6 +347,15 @@ class CliTests(unittest.TestCase):
             _, _, err = self._run("run", "Who founded the Halvey Ferry Company?", "--receipts", d, "--no-loop")
         self.assertIn("Treat its verdicts as rough", err)
 
+    def test_require_trusted_refuses_a_failed_examiner(self):
+        with tempfile.TemporaryDirectory() as d:
+            code, _, err = self._run("run", "Who founded the Halvey Ferry Company?", "--receipts", d, "--require-trusted")
+            self.assertEqual(code, 2)
+            self._run("calibrate", "--receipts", d, "--pairs", "8")
+            code, _, err = self._run("bench", "--limit", "1", "--receipts", d, "--require-trusted")
+        self.assertEqual(code, 2)
+        self.assertIn("stopped", err)
+
     def test_calibrate_runs_option(self):
         with tempfile.TemporaryDirectory() as d:
             code, out, _ = self._run("calibrate", "--receipts", d, "--pairs", "8", "--runs", "3")
