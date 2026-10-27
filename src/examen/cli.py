@@ -67,6 +67,8 @@ def main(argv: list[str] | None = None) -> int:
                        help="tell the writer only that points are missing, not which (harder to game)")
         p.add_argument("--cite-pass", action="store_true",
                        help="write without citations, then add them in a pass that may not change any words")
+        p.add_argument("--split-seed", default="",
+                       help="changes which checklist questions are held back; use a new one for each run")
 
     d = sub.add_parser("demo", help="offline run on the invented islands, with a writer that makes mistakes")
     d.add_argument("--question", default=None)
@@ -129,7 +131,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if a.cmd == "run":
         cfg = Config(mode=a.mode, loop=not a.no_loop, max_rounds=a.rounds, budget=a.budget, repeats=a.repeats,
-                     terse=a.terse, cite_pass=a.cite_pass)
+                     terse=a.terse, cite_pass=a.cite_pass, split_seed=a.split_seed)
         res = run(a.question, load_model(a.writer), load_model(a.examiner), make_source(a.source), cfg,
                   _receipts(a.receipts, "run"))
         _print_run(res)

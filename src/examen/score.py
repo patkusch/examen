@@ -43,7 +43,7 @@ class Checklist:
                 "fingerprint": self.fingerprint}
 
 
-def make_checklist(examiner: Model, question: str, hold_back: float = 1 / 3) -> tuple[Checklist, int]:
+def make_checklist(examiner: Model, question: str, hold_back: float = 1 / 3, salt: str = "") -> tuple[Checklist, int]:
     reply = examiner.ask("checklist", {"question": question})
     items: list[str] = []
     for it in reply.data.get("items", []) if isinstance(reply.data.get("items"), list) else []:
@@ -52,8 +52,9 @@ def make_checklist(examiner: Model, question: str, hold_back: float = 1 / 3) -> 
     # Only items the feedback never touches can be held back, or the feedback would give them away.
     eligible = [s for s in items if not ABOUT_CITING.search(s)]
     n = max(1, round(len(eligible) * hold_back)) if len(eligible) >= 2 else 0
-    # Chosen by their own fingerprint, so the split cannot be steered by the writer.
-    hidden = sorted(eligible, key=lambda s: hashlib.sha256(s.encode()).hexdigest())[:n]
+    # Chosen by fingerprint, so the writer cannot steer the split. A different salt per run
+    # holds back different items, so a writer run many times cannot learn which ones are hidden.
+    hidden = sorted(eligible, key=lambda s: hashlib.sha256((salt + s).encode()).hexdigest())[:n]
     visible = [s for s in items if s not in hidden]
     fp = hashlib.sha256(json.dumps([question, visible, hidden]).encode()).hexdigest()[:16]
     return Checklist(question, visible, hidden, fp), reply.tokens

@@ -34,6 +34,7 @@ class Config:
     max_quote: int = 400
     terse: bool = False       # tell the writer only that points are missing, not which
     cite_pass: bool = False   # write without citations, then add them in a pass that may not change words
+    split_seed: str = ""      # changes which checklist items are held back; vary it between runs
 
 
 class BudgetSpent(Exception):
@@ -124,7 +125,7 @@ class Run:
     # ------------------------------------------------------------ the run
 
     def go(self) -> dict:
-        checklist, t = make_checklist(self.examiner, self.q)
+        checklist, t = make_checklist(self.examiner, self.q, salt=self.cfg.split_seed)
         self.examiner_tokens += t
         self.receipts.write_json("checklist.json", checklist.to_dict())
 

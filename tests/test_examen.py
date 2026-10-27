@@ -434,6 +434,13 @@ class ReviewFixTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("first draft", why)
 
+    def test_split_seed_rotates_held_back_items(self):
+        q = "Which charity runs the Seld Lighthouse, who has been its director since 2015, and what did it restore?"
+        splits = {tuple(make_checklist(self.ex, q, salt=str(i))[0].hidden) for i in range(10)}
+        self.assertGreater(len(splits), 1)
+        r = run(q, FakeModel(), FakeModel(), FixtureSource(), Config(loop=False, split_seed="a"))
+        self.assertEqual(r["held_back"], 1)
+
     def test_items_about_sources_are_never_held_back(self):
         for q in CORPUS["questions"]:
             cl, _ = make_checklist(self.ex, q["question"])
