@@ -92,6 +92,7 @@ def main(argv: list[str] | None = None) -> int:
 
     c = sub.add_parser("calibrate", help="measure the examiner on claims with known answers")
     c.add_argument("--pairs", type=int, default=60)
+    c.add_argument("--runs", type=int, default=2, help="times each claim is judged, each with its own seed")
     common(c, writer=False)
 
     lab = sub.add_parser("labels", help="write the labelled claim pairs to a file")
@@ -107,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if a.cmd == "calibrate":
         ex = load_model(a.examiner)
-        res = calibrate(ex, make_labels(a.pairs))
+        res = calibrate(ex, make_labels(a.pairs), runs=max(1, a.runs))
         Receipts(Path(a.receipts) / "calibration").write_json(ex.name.replace(":", "_").replace("/", "_") + ".json", res)
         print(json.dumps(res, indent=2))
         return 0

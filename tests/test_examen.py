@@ -347,6 +347,12 @@ class CliTests(unittest.TestCase):
             _, _, err = self._run("run", "Who founded the Halvey Ferry Company?", "--receipts", d, "--no-loop")
         self.assertIn("Treat its verdicts as rough", err)
 
+    def test_calibrate_runs_option(self):
+        with tempfile.TemporaryDirectory() as d:
+            code, out, _ = self._run("calibrate", "--receipts", d, "--pairs", "8", "--runs", "3")
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out)["pairs"], 8)
+
     def test_bench_prints_a_table(self):
         with tempfile.TemporaryDirectory() as d:
             code, out, _ = self._run("bench", "--limit", "1", "--repeats", "1", "--writer", "fake-flawed", "--receipts", d)
