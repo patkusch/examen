@@ -38,6 +38,25 @@ False claims let through, by kind:
 
 **Decision.** Nothing passed, so, as the plan requires, the bench was not run.
 
-**Next idea (not fitted to the test).** Ask the examiner to quote the words on the page that state
+## Update: quote first, then compare
+
+`quote:<examiner>` makes the examiner copy the page sentence closest to the claim (code checks the
+quote is really there), then compare the claim with that one sentence part by part: who, what was
+done, to what, when, where, how many. Same 84 claims, code checks in front.
+
+| Examiner | Right | False let through | Held-out kinds | True rejected | Time | Trusted |
+|---|---|---|---|---|---|---|
+| 4B, code checks + quote first | 89% | 0% | 0% | 21% (9 of 42) | 2 min 49 s | no |
+| **12B, code checks + quote first** | **98%** | **0%** | **0%** | **5% (2 of 42)** | 7 min 10 s | **yes** |
+
+Changed verbs went from 5 of 6 let through to 0 of 6 for the 12B. The 4B now lets nothing false
+through but rejects too many true claims; with it as grader the loop would delete true facts.
+
+**Caveat.** The comparison prompt was written after seeing the verb failures, on this same set of
+claims. Its wording is general (it never mentions verbs), but to check it was not fitted to these
+84 claims, the 12B is being retested on a fresh draw (`--label-seed 11`; 32 of its 42 false claims
+are new).
+
+**Earlier idea, now tried.** Ask the examiner to quote the words on the page that state
 the claim before it answers, and check by code that the quote is really on the page. Judges that
 show their evidence first are reported to be more reliable, and it targets reading, not a claim kind.
