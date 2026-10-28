@@ -140,3 +140,19 @@ With the stand-in examiner, the loop on the one-agent set-up cut a true sentence
 wrongly rejected, and lost an answer (8 of 10 instead of 9 of 10). Calibration only used copied
 true claims, so it never measured this. It now includes reworded true claims and a limit on
 rejected truths.
+
+## 7. Making a local examiner trustworthy (2026-10-28)
+
+No Claude key on this machine, and both gemma3 models failed calibration, mostly by letting false
+claims through. Two ideas from the research, both cheap:
+
+- **Code checks in front of the model** (`guarded:`). The lesson from section 2: what kept loops
+  honest was checking by code the agent cannot argue with. Numbers and proper names in a claim must
+  be on the page; a "not" in the claim must be matched by one on the page. Code can only veto.
+- **A panel** (`panel:a+b`), after PoLL: a claim is backed only if every member agrees. gemma3 4B and
+  12B miss different kinds of false claim, so requiring both should cut what slips through.
+
+The risk is fitting checks to the test. So calibration gained three kinds the checks were not
+designed for (a changed verb, a one-word place swap, a changed number word), and an examiner must
+let through no more than 10% of those on their own. One honest caveat: the name check also catches
+place swaps, since a place is a name. Verb and number-word changes reach the model untouched.

@@ -33,3 +33,13 @@ Written 2026-10-27, before any real-model run, so the pass mark cannot be moved 
   judged by the same rules against the plain run.
 - Report every question where the loop lost an answer-key fact the no-loop arm had, with the
   sentence that was cut and the examiner's verdict on it.
+
+## Added 2026-10-28, still before any real bench run
+
+- No Claude key is available, so a local examiner may be used **if it passes calibration**,
+  including the held-out kinds: plain, `guarded:` or `panel:`. The pass rules above do not change.
+- If the examiner is the same family as the writer (gemma grading gemma), the result is reported
+  with that warning next to it.
+- Calibration showed these examiners give the same verdict when re-asked with a new seed (60 of 60,
+  temperature 0.2). If that holds for the chosen examiner, scoring once instead of three times is
+  allowed, and is reported.
