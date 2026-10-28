@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+- Calibration has 84 claims and three held-out kinds of false claim (changed verb, swapped place, changed number word); an examiner must pass those on their own.
+- `guarded:<examiner>`: code checks reject claims whose numbers, names or "not" do not match the page, before the model is asked.
+- `panel:<a>+<b>`: a claim is backed only if every examiner agrees.
+- `calibrate` prints a readable summary (`--json` for the full result) and how many verdicts the code checks made.
+- `make calibrate-guarded`.
+
 ## 0.3.0 (2026-10-27)
 - `--require-trusted` refuses to run with an examiner that has not passed `examen calibrate`.
 - Warns when the writer and examiner come from the same model family.
