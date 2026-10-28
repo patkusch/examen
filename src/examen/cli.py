@@ -137,6 +137,8 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--pairs", type=int, default=84)
     c.add_argument("--runs", type=int, default=2, help="times each claim is judged, each with its own seed")
     c.add_argument("--json", action="store_true", help="print the full result as JSON")
+    c.add_argument("--label-seed", type=int, default=7,
+                   help="draws a different set of test claims; use a new one to check a result was not fitted to one set")
     common(c, writer=False)
 
     sh = sub.add_parser("show", help="print what a past run decided, round by round, from its receipts")
@@ -158,7 +160,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if a.cmd == "calibrate":
         ex = load_model(a.examiner)
-        res = calibrate(ex, make_labels(a.pairs), runs=max(1, a.runs))
+        res = calibrate(ex, make_labels(a.pairs, seed=a.label_seed), runs=max(1, a.runs))
+        res["label_seed"] = a.label_seed
         Receipts(Path(a.receipts) / "calibration").write_json(ex.name.replace(":", "_").replace("/", "_") + ".json", res)
         print(json.dumps(res, indent=2) if a.json else _calibration_summary(res))
         return 0

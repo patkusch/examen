@@ -240,6 +240,11 @@ class BenchAndCalibrationTests(unittest.TestCase):
         self.assertGreater(res["false_pass_rate"], 0.10)
         self.assertFalse(res["trusted"])
 
+    def test_a_new_label_seed_draws_new_claims(self):
+        a, b = make_labels(seed=7), make_labels(seed=11)
+        self.assertEqual(len(a), len(b))
+        self.assertGreater(len({x["claim"] for x in b} - {x["claim"] for x in a}), 20)
+
     def test_held_out_kinds_must_pass_on_their_own(self):
         from examen.calibrate import HELD_OUT
 
