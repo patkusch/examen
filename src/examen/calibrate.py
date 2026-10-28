@@ -106,6 +106,7 @@ def calibrate(examiner: Model, labels: list[dict], runs: int = 2) -> dict:
     verdicts = [[truthy(examiner.vary(r).ask("support", {"claim": x["claim"], "source": x["source"]})
                         .data.get("supported")) for x in labels] for r in range(runs)]
     first = verdicts[0]
+    vetoes = getattr(examiner, "vetoes", None)
     right = sum(v == x["label"] for v, x in zip(first, labels))
     fp = sum(v and not x["label"] for v, x in zip(first, labels))
     fn = sum((not v) and x["label"] for v, x in zip(first, labels))
@@ -130,6 +131,8 @@ def calibrate(examiner: Model, labels: list[dict], runs: int = 2) -> dict:
                                     f"{sum(x['kind'] == k for x in labels)}"
                                  for k in ("verbatim", "reworded") if any(x['kind'] == k for x in labels)},
         "held_out_false_pass_rate": round(held_pass, 4),
+        # How many verdicts code made without asking the model (guarded examiners only), across all runs.
+        "decided_by_code": vetoes,
         "trusted": (acc >= TRUST_BAR and false_pass <= FALSE_PASS_LIMIT and false_reject <= FALSE_REJECT_LIMIT
                     and held_pass <= FALSE_PASS_LIMIT),
         "bar": {"accuracy": TRUST_BAR, "false_pass_rate": FALSE_PASS_LIMIT, "false_reject_rate": FALSE_REJECT_LIMIT,

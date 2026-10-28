@@ -425,6 +425,8 @@ class GuardTests(unittest.TestCase):
         self.assertTrue(all(res["false_pass_by_kind"][k].startswith("0 of")
                             for k in ("number", "name", "negation", "padding")))
         self.assertGreater(res["held_out_false_pass_rate"], 0.10)  # verbs and number words still get through
+        self.assertGreater(res["decided_by_code"], 0)
+        self.assertIsNone(calibrate(FakeModel(), make_labels(8))["decided_by_code"])
         self.assertFalse(res["trusted"])
 
 
