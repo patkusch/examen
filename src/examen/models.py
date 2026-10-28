@@ -220,11 +220,19 @@ class ClaudeModel(LLM):
 
 def model_name(spec: str) -> str:
     """The name a spec will run under, without loading it (so no SDK or server is needed)."""
+    if spec.startswith("guarded:"):
+        return "guarded:" + model_name(spec[len("guarded:"):])
+    if spec.startswith("panel:"):
+        return "panel:" + "+".join(model_name(x) for x in spec[len("panel:"):].split("+"))
     return "claude:claude-opus-5-5" if spec == "claude" else spec
 
 
 def family(spec: str) -> str | None:
     """Rough model family: claude, gemma, llama, qwen... None for the offline stand-ins."""
+    if spec.startswith("guarded:"):
+        return family(spec[len("guarded:"):])
+    if spec.startswith("panel:"):
+        return family(spec[len("panel:"):].split("+")[0])
     name = model_name(spec)
     if name.startswith("fake"):
         return None
@@ -235,6 +243,12 @@ def family(spec: str) -> str | None:
 
 
 def load_model(spec: str) -> Model:
+    """fake, fake-flawed, ollama:<model>, claude[:<model>], guarded:<spec>, panel:<spec>+<spec>"""
+    from .guards import Guarded, Panel
+    if spec.startswith("guarded:"):
+        return Guarded(load_model(spec[len("guarded:"):]))
+    if spec.startswith("panel:"):
+        return Panel([load_model(x) for x in spec[len("panel:"):].split("+")])
     if spec in ("fake", "fake-flawed"):
         return FakeModel(flawed=spec == "fake-flawed")
     kind, _, name = spec.partition(":")
@@ -242,4 +256,5 @@ def load_model(spec: str) -> Model:
         return OllamaModel(name)
     if kind == "claude":
         return ClaudeModel(name or "claude-opus-5-5")
-    raise SystemExit(f"unknown model {spec!r}: use fake, fake-flawed, ollama:<model> or claude:<model>")
+    raise SystemExit(f"unknown model {spec!r}: use fake, fake-flawed, ollama:<model>, claude:<model>, "
+                     "guarded:<spec> or panel:<spec>+<spec>")

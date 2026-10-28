@@ -367,6 +367,67 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
 
 
+class GuardTests(unittest.TestCase):
+    def test_veto_catches_numbers_names_and_not(self):
+        from examen.guards import veto
+        page = "The Seld Lighthouse was built in 1871 by the engineer Thomas Varga. It is 31 metres tall."
+        self.assertIsNone(veto("Thomas Varga built the Seld Lighthouse in 1871.", page))
+        self.assertIn("number", veto("It was built in 1872.", page))
+        self.assertIn("name", veto("Helen Ashdown built the Seld Lighthouse.", page))
+        self.assertIn("not", veto("The lighthouse was not built by Thomas Varga.", page))
+        self.assertIsNone(veto("The Seld Lighthouse page records this: It is 31 metres tall.", page))
+        self.assertIsNone(veto("Ostra has no airport.", "Ostra has no airport; visitors arrive by boat."))
+        self.assertIsNone(veto("About 4,200 people live there.", "home to about 4200 people"))
+
+    def test_guarded_only_ever_turns_yes_into_no(self):
+        from examen.guards import Guarded
+
+        class Yes(Model):
+            name = "yes"
+
+            def ask(self, role, payload):
+                return Reply({"supported": True, "pass": True}, 5)
+
+        g = Guarded(Yes())
+        self.assertEqual(g.name, "guarded:yes")
+        page = "Port Seld hosts the Wool Fair every September."
+        self.assertTrue(g.ask("support", {"claim": "Port Seld hosts the Wool Fair.", "source": page}).data["supported"])
+        r = g.ask("support", {"claim": "Kessick hosts the Wool Fair.", "source": page})
+        self.assertEqual((r.data["supported"], r.tokens, g.vetoes), (False, 0, 1))
+        self.assertTrue(g.ask("check", {"item": "x", "report": "y"}).data["pass"])
+
+    def test_panel_needs_every_member_to_agree(self):
+        from examen.guards import Panel
+
+        class Says(Model):
+            def __init__(self, v):
+                self.v, self.name, self.calls = v, f"says-{v}", 0
+
+            def ask(self, role, payload):
+                self.calls += 1
+                return Reply({"supported": self.v, "pass": self.v, "items": ["q?"]}, 1)
+
+        no, yes = Says(False), Says(True)
+        self.assertFalse(Panel([no, yes]).ask("support", {}).data["supported"])
+        self.assertEqual(yes.calls, 0)  # stops at the first no
+        self.assertTrue(Panel([Says(True), Says(True)]).ask("check", {}).data["pass"])
+        self.assertEqual(Panel([no, yes]).ask("checklist", {}).data["items"], ["q?"])
+
+    def test_specs_compose(self):
+        from examen.models import family
+        m = load_model("guarded:panel:fake+fake-flawed")
+        self.assertEqual(m.name, "guarded:panel:fake+fake-flawed")
+        self.assertEqual(family("guarded:ollama:gemma3:12b"), "gemma")
+        self.assertEqual(family("panel:ollama:gemma3:12b+claude"), "gemma")
+
+    def test_guards_raise_the_stand_in_on_targeted_kinds_only(self):
+        res = calibrate(load_model("guarded:fake"), make_labels())
+        self.assertTrue(all(res["false_pass_by_kind"][k].startswith("0 of")
+                            for k in ("number", "name", "negation", "padding")))
+        self.assertGreater(res["held_out_false_pass_rate"], 0.10)  # verbs and number words still get through
+        self.assertFalse(res["trusted"])
+
+
 class CliTests(unittest.TestCase):
     def _run(self, *args):
         out, err = io.StringIO(), io.StringIO()
