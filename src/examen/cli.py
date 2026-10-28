@@ -52,6 +52,22 @@ def _print_run(r: dict) -> None:
     print("note: 'backed by its source' means the page says it, not that it is true.")
 
 
+def _calibration_summary(r: dict) -> str:
+    lines = [f"examiner: {r['examiner']}  ({r['pairs']} claims)",
+             f"right:                     {r['accuracy']:.0%}   (needs {r['bar']['accuracy']:.0%})",
+             f"false claims let through:  {r['false_pass_rate']:.0%}   (at most {r['bar']['false_pass_rate']:.0%})",
+             f"  of the held-out kinds:   {r['held_out_false_pass_rate']:.0%}   (at most "
+             f"{r['bar']['held_out_false_pass_rate']:.0%})",
+             f"true claims rejected:      {r['false_reject_rate']:.0%}   (at most {r['bar']['false_reject_rate']:.0%})",
+             f"same verdict when re-asked: {r['self_agreement']:.0%}"]
+    lines += [f"  {k}: {v} let through" for k, v in r["false_pass_by_kind"].items()]
+    lines += [f"  {k} true claims: {v} rejected" for k, v in r["false_reject_by_kind"].items()]
+    if r.get("decided_by_code") is not None:
+        lines.append(f"decided by code checks, without asking the model: {r['decided_by_code']}")
+    lines.append("TRUSTED" if r["trusted"] else "NOT TRUSTED: do not use it to grade the bench")
+    return "\n".join(lines)
+
+
 def _show(folder: Path) -> int:
     if not (folder / "rounds.jsonl").exists():
         runs = sorted(p.parent for p in folder.glob("*/rounds.jsonl"))
@@ -120,6 +136,7 @@ def main(argv: list[str] | None = None) -> int:
     c = sub.add_parser("calibrate", help="measure the examiner on claims with known answers")
     c.add_argument("--pairs", type=int, default=84)
     c.add_argument("--runs", type=int, default=2, help="times each claim is judged, each with its own seed")
+    c.add_argument("--json", action="store_true", help="print the full result as JSON")
     common(c, writer=False)
 
     sh = sub.add_parser("show", help="print what a past run decided, round by round, from its receipts")
@@ -143,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
         ex = load_model(a.examiner)
         res = calibrate(ex, make_labels(a.pairs), runs=max(1, a.runs))
         Receipts(Path(a.receipts) / "calibration").write_json(ex.name.replace(":", "_").replace("/", "_") + ".json", res)
-        print(json.dumps(res, indent=2))
+        print(json.dumps(res, indent=2) if a.json else _calibration_summary(res))
         return 0
 
     if a.cmd == "demo":

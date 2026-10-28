@@ -470,9 +470,12 @@ class CliTests(unittest.TestCase):
 
     def test_calibrate_runs_option(self):
         with tempfile.TemporaryDirectory() as d:
-            code, out, _ = self._run("calibrate", "--receipts", d, "--pairs", "8", "--runs", "3")
-        self.assertEqual(code, 0)
-        self.assertEqual(json.loads(out)["pairs"], 8)
+            code, out, _ = self._run("calibrate", "--receipts", d, "--pairs", "8", "--runs", "3", "--json")
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(out)["pairs"], 8)
+            _, text, _ = self._run("calibrate", "--receipts", d, "--examiner", "guarded:fake")
+        self.assertIn("NOT TRUSTED", text)
+        self.assertIn("decided by code checks", text)
 
     def test_bench_prints_a_table(self):
         with tempfile.TemporaryDirectory() as d:
