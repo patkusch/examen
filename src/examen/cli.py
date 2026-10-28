@@ -130,6 +130,7 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--budget", type=int, default=60000)
     b.add_argument("--limit", type=int, default=None)
     b.add_argument("--repeats", type=int, default=3)
+    b.add_argument("--resume", default=None, help="a stopped bench folder to carry on in; finished runs are kept")
     loop_options(b)
     common(b)
 
@@ -197,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if a.cmd == "bench":
         res = bench(load_model(a.writer), load_model(a.examiner), a.budget, a.limit,
-                    _receipts(a.receipts, "bench"), a.repeats, terse=a.terse, cite_pass=a.cite_pass)
+                    Receipts(a.resume) if a.resume else _receipts(a.receipts, "bench"), a.repeats, terse=a.terse, cite_pass=a.cite_pass)
         print(f"{'set-up':<14}{'correct':>9}{'key found':>11}{'backed':>8}{'held-back':>11}{'tokens':>9}")
         for arm, s in res["summary"].items():
             hp = "-" if s["hidden_pass"] is None else f"{s['hidden_pass']:.0%}"

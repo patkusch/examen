@@ -24,5 +24,10 @@ class Receipts:
         if self.dir:
             (self.dir / name).write_text(text)
 
+    def read_rows(self, name: str) -> list[dict]:
+        if not self.dir or not (self.dir / name).exists():
+            return []
+        return [json.loads(line) for line in (self.dir / name).read_text().splitlines() if line.strip()]
+
     def sub(self, name: str) -> "Receipts":
         return Receipts(self.dir / name if self.dir else None)

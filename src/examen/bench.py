@@ -25,12 +25,19 @@ def bench(writer: Model, examiner: Model, budget: int = 60000, limit: int | None
           receipts: Receipts | None = None, repeats: int = 3, terse: bool = False, cite_pass: bool = False) -> dict:
     receipts = receipts or Receipts(None)
     questions = load_corpus()["questions"][:limit]
-    rows = []
+    # Rows already in this folder are kept, so a stopped run carries on where it left off.
+    rows = receipts.read_rows("bench.jsonl")
+    done = {(r["question"], r["arm"]) for r in rows}
     for q in questions:
         for mode, loop in ARMS:
             arm = f"{mode}{'+loop' if loop else ''}"
+            if (q["id"], arm) in done:
+                continue
             cfg = Config(mode=mode, loop=loop, budget=budget, repeats=repeats, terse=terse, cite_pass=cite_pass)
-            r = run(q["question"], writer, examiner, FixtureSource(), cfg, receipts.sub(f"{q['id']}-{arm}"), q["keys"])
+            sub = receipts.sub(f"{q['id']}-{arm}")
+            if sub.dir and (sub.dir / "rounds.jsonl").exists():
+                (sub.dir / "rounds.jsonl").unlink()  # a run cut off half way starts its log afresh
+            r = run(q["question"], writer, examiner, FixtureSource(), cfg, sub, q["keys"])
             f = r["final"]
             row = {"question": q["id"], "arm": arm, "correct": f["correct"], "key_recall": f["key_recall"],
                    "supported": f["supported"], "supported_share": f["supported_share"],

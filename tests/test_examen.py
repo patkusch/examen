@@ -223,6 +223,24 @@ class BenchAndCalibrationTests(unittest.TestCase):
         self.assertEqual(len(out["rows"]), 8)
         self.assertGreater(out["summary"]["team+loop"]["supported_share"], out["summary"]["team"]["supported_share"])
 
+    def test_bench_resumes_without_redoing_finished_runs(self):
+        with tempfile.TemporaryDirectory() as d:
+            first = bench(FakeModel(flawed=True), FakeModel(), limit=1, repeats=1, receipts=Receipts(d))
+            rows = (Path(d) / "bench.jsonl").read_text().splitlines()
+            (Path(d) / "bench.jsonl").write_text("\n".join(rows[:2]) + "\n")  # as if stopped after two runs
+
+            class Counting(FakeModel):
+                calls = 0
+
+                def ask(self, role, payload):
+                    Counting.calls += 1
+                    return super().ask(role, payload)
+
+            again = bench(Counting(flawed=True), FakeModel(), limit=1, repeats=1, receipts=Receipts(d))
+        self.assertEqual(len(again["rows"]), 4)
+        self.assertEqual(again["summary"], first["summary"])
+        self.assertLess(Counting.calls, 30)  # only the two missing runs were done
+
     def test_labels_are_balanced_and_known(self):
         labels = make_labels(40)
         self.assertEqual(sum(x["label"] for x in labels), 20)
