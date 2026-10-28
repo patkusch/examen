@@ -227,8 +227,11 @@ class BenchAndCalibrationTests(unittest.TestCase):
         labels = make_labels(40)
         self.assertEqual(sum(x["label"] for x in labels), 20)
         kinds = {x["kind"] for x in labels}
-        self.assertEqual(kinds, {"verbatim", "reworded", "number", "name", "negation", "padding",
+        self.assertEqual(kinds, {"verbatim", "reworded", "shortened", "number", "name", "negation", "padding",
                                  "verb", "place", "count_word"})
+        for x in labels:
+            if x["kind"] == "shortened":
+                self.assertTrue(x["claim"].rstrip(".") in x["source"])
         for x in labels:
             if not x["label"]:
                 self.assertNotIn(x["claim"], x["source"])

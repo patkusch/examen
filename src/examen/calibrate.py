@@ -21,6 +21,21 @@ FALSE_PASS_LIMIT = 0.10
 # Rejecting a true sentence is not harmless either: the loop then deletes a true fact.
 FALSE_REJECT_LIMIT = 0.15
 LEAD_IN = "The {title} page records this: "
+# Real writers summarise, so a true claim often leaves out part of its sentence. Found live on
+# 2026-10-29: an examiner rejected "The Seld Lighthouse was built in 1871" because the page also says who.
+CUTS = (" by the ", ", and ", ", which ", ", where ", ", most of whom ", ", with ", ", including ", ", a ", "; ",
+        " and through ")
+
+
+def _shorten(s: str) -> str | None:
+    """The sentence with its last clause cut off, still a true statement. None if there is nothing to cut."""
+    for cut in CUTS:
+        i = s.find(cut)
+        head = s[:i].rstrip(",") if i > 0 else ""
+        # "The isles have been governed." is not a statement; cutting there would make a broken claim.
+        if len(head.split()) >= 4 and not re.search(r"\b(was|were|been|is|are|be|now) [a-z]+$", head):
+            return head + "."
+    return None
 NUM = re.compile(r"\b\d[\d,]*\b")
 NAME = re.compile(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b")
 
@@ -89,8 +104,12 @@ def make_labels(n: int = 84, seed: int = 7) -> list[dict]:
             if false and false != true:
                 used.add(j)
                 passage = best_passage(d["text"], true)
-                # Every other true claim is reworded, so the examiner is tested on writing that is not a paste.
-                if i % 2:
+                # True claims take turns being copied, reworded and shortened, so the examiner is tested on
+                # writing that is not a paste and on claims that say less than the page.
+                short = _shorten(true)
+                if i % 3 != 1 and short:
+                    out.append({"claim": short, "source": passage, "label": True, "kind": "shortened", "doc": d["id"]})
+                elif i % 3 == 1:
                     out.append({"claim": LEAD_IN.format(title=d["title"]) + true, "source": passage, "label": True,
                                 "kind": "reworded", "doc": d["id"]})
                 else:
@@ -129,7 +148,7 @@ def calibrate(examiner: Model, labels: list[dict], runs: int = 2) -> dict:
         "false_reject_rate": round(false_reject, 4),
         "false_reject_by_kind": {k: f"{sum(not v for v, x in zip(first, labels) if x['kind'] == k)} of "
                                     f"{sum(x['kind'] == k for x in labels)}"
-                                 for k in ("verbatim", "reworded") if any(x['kind'] == k for x in labels)},
+                                 for k in ("verbatim", "reworded", "shortened") if any(x['kind'] == k for x in labels)},
         "held_out_false_pass_rate": round(held_pass, 4),
         # How many first-run verdicts code made without asking the model (guarded examiners only).
         "decided_by_code": vetoes,
