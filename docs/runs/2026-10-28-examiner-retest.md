@@ -60,3 +60,24 @@ are new).
 **Earlier idea, now tried.** Ask the examiner to quote the words on the page that state
 the claim before it answers, and check by code that the quote is really on the page. Judges that
 show their evidence first are reported to be more reliable, and it targets reading, not a claim kind.
+
+## Update 2026-10-29: the fresh set passed, then the bench found a gap the test missed
+
+- **Fresh claims (`--label-seed 11`):** the 12B with code checks and quote first got all 84 right,
+  let nothing false through and rejected nothing true. The pass was not fitted to the first set.
+- **The bench was started**, and 12 of its 40 runs finished before the session ended. They were
+  thrown away, because they showed the examiner was wrong in a way the test never measured. It
+  rejected true sentences that said *less* than the page: "The Seld Lighthouse was built in 1871"
+  failed because the page also says who built it. The 4B writer's one-agent reports scored 0 of 3
+  sentences backed, even when every answer was right. Asked to check "who, what was done…", the
+  12B treated a missing "who" as a difference.
+- **Fixes, made before any new bench run:**
+  1. The examiner test now has *shortened* true claims, cut at a safe point ("…in 1871." from
+     "…in 1871 by the engineer Thomas Varga.").
+  2. The comparison asks the model to split the claim into facts and mark each as in the quote or
+     not; code backs the claim only if every fact is there. Loosening the wording instead made it
+     worse (changed verbs got through), so that version was dropped.
+  3. The planner prompt now says a question asking for two things is never "straightforward"; the
+     4B had given every two-part question a single search.
+- The examiner is being retested on both sets with these fixes; the bench runs again only if it
+  passes both.
