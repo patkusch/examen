@@ -52,6 +52,17 @@ SYSTEM = {
         "the claim says. Extra detail in the claim that the passage does not state means false. "
         "Reply as JSON: {\"supported\": true} or {\"supported\": false}"
     ),
+    "quote": (
+        "You find evidence. Copy, word for word, the one sentence from the passage that is closest to stating the "
+        "claim. Copy it exactly; do not fix or shorten it. If no sentence is about the claim, give an empty quote. "
+        "Reply as JSON: {\"quote\": \"...\"}"
+    ),
+    "compare": (
+        "You compare a claim with a quote from a source. Check every part of the claim against the quote: who, what "
+        "was done, to what, when, where and how many. If any part of the claim differs from the quote, or the quote "
+        "does not say it, the answer is false. Name the part that differs. "
+        "Reply as JSON: {\"difference\": \"...\", \"same\": true} or {\"difference\": \"...\", \"same\": false}"
+    ),
     "check": (
         "You grade a research report against one yes/no checklist question. Answer from the report text only; "
         "do not use your own knowledge. Reply as JSON: {\"pass\": true} or {\"pass\": false}"

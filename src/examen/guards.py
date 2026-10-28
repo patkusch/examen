@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from .models import Model, Reply
-from .text import truthy
+from .text import normalise, truthy, words
 
 NUM = re.compile(r"\d[\d,]*(?:\.\d+)?")
 CAPS = re.compile(r"\b[A-Z][a-zA-Z'\-]+")
@@ -88,3 +88,38 @@ class Panel(Model):
             if not truthy(r.data.get(key)):
                 return Reply({key: False}, tokens)
         return Reply({key: True}, tokens)
+
+
+class QuoteFirst(Model):
+    """An examiner that has to show its evidence before it answers.
+
+    Step 1: it copies the sentence from the passage closest to stating the claim.
+    Step 2: code checks the quote really is in the passage and is a real sentence; if not, no.
+    Step 3: in a separate short question it compares the claim with the quote, part by part.
+    The comparison sees one sentence instead of a whole passage, so small differences have
+    nowhere to hide. Judges that cite evidence before scoring are reported to be more reliable.
+    """
+
+    def __init__(self, inner: Model) -> None:
+        self.inner = inner
+        self.name = "quote:" + inner.name
+        self.bad_quotes = 0
+
+    @property
+    def served(self) -> set:
+        return getattr(self.inner, "served", set())
+
+    def vary(self, i: int) -> "QuoteFirst":
+        return QuoteFirst(self.inner.vary(i)) if i else self
+
+    def ask(self, role: str, payload: dict) -> Reply:
+        if role != "support":
+            return self.inner.ask(role, payload)
+        q = self.inner.ask("quote", {"claim": payload["claim"], "source": payload["source"]})
+        quote = str(q.data.get("quote") or "").strip()
+        if len(words(quote)) < 3 or normalise(quote) not in normalise(payload["source"]):
+            self.bad_quotes += 1
+            return Reply({"supported": False, "why": "no exact quote from the page"}, q.tokens)
+        c = self.inner.ask("compare", {"claim": payload["claim"], "quote": quote})
+        return Reply({"supported": truthy(c.data.get("same")), "quote": quote,
+                      "difference": c.data.get("difference", "")}, q.tokens + c.tokens)

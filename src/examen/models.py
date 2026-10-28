@@ -130,6 +130,13 @@ class FakeModel(Model):
             return {"supported": False}
         return {"supported": overlap(p["claim"], p["source"]) >= 0.8}
 
+    def _quote(self, p):
+        best = max(sentences(p["source"]), key=lambda x: overlap(p["claim"], x), default="")
+        return {"quote": best if overlap(p["claim"], best) > 0 else ""}
+
+    def _compare(self, p):
+        return {"same": self._support({"claim": p["claim"], "source": p["quote"]})["supported"], "difference": ""}
+
     def _check(self, p):
         item, report = p["item"], p["report"]
         if item == SOURCE_ITEM:
@@ -220,8 +227,9 @@ class ClaudeModel(LLM):
 
 def model_name(spec: str) -> str:
     """The name a spec will run under, without loading it (so no SDK or server is needed)."""
-    if spec.startswith("guarded:"):
-        return "guarded:" + model_name(spec[len("guarded:"):])
+    for wrapper in ("guarded:", "quote:"):
+        if spec.startswith(wrapper):
+            return wrapper + model_name(spec[len(wrapper):])
     if spec.startswith("panel:"):
         return "panel:" + "+".join(model_name(x) for x in spec[len("panel:"):].split("+"))
     return "claude:claude-opus-5-5" if spec == "claude" else spec
@@ -229,8 +237,9 @@ def model_name(spec: str) -> str:
 
 def family(spec: str) -> str | None:
     """Rough model family: claude, gemma, llama, qwen... None for the offline stand-ins."""
-    if spec.startswith("guarded:"):
-        return family(spec[len("guarded:"):])
+    for wrapper in ("guarded:", "quote:"):
+        if spec.startswith(wrapper):
+            return family(spec[len(wrapper):])
     if spec.startswith("panel:"):
         return family(spec[len("panel:"):].split("+")[0])
     name = model_name(spec)
@@ -247,6 +256,9 @@ def load_model(spec: str) -> Model:
     from .guards import Guarded, Panel
     if spec.startswith("guarded:"):
         return Guarded(load_model(spec[len("guarded:"):]))
+    if spec.startswith("quote:"):
+        from .guards import QuoteFirst
+        return QuoteFirst(load_model(spec[len("quote:"):]))
     if spec.startswith("panel:"):
         return Panel([load_model(x) for x in spec[len("panel:"):].split("+")])
     if spec in ("fake", "fake-flawed"):
@@ -257,4 +269,4 @@ def load_model(spec: str) -> Model:
     if kind == "claude":
         return ClaudeModel(name or "claude-opus-5-5")
     raise SystemExit(f"unknown model {spec!r}: use fake, fake-flawed, ollama:<model>, claude:<model>, "
-                     "guarded:<spec> or panel:<spec>+<spec>")
+                     "guarded:<spec>, quote:<spec> or panel:<spec>+<spec>")

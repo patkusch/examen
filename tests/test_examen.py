@@ -75,7 +75,7 @@ class PromptTests(unittest.TestCase):
         self.assertEqual(parse_json("[1, 2]"), {})
 
     def test_every_role_has_a_prompt(self):
-        for role in ["checklist", "plan", "notes", "write", "write_from_docs", "support", "check"]:
+        for role in ["checklist", "plan", "notes", "write", "write_from_docs", "support", "check", "quote", "compare"]:
             system, user = render(role, {"x": 1})
             self.assertIn("JSON", system)
         with self.assertRaises(KeyError):
@@ -413,10 +413,44 @@ class GuardTests(unittest.TestCase):
         self.assertTrue(Panel([Says(True), Says(True)]).ask("check", {}).data["pass"])
         self.assertEqual(Panel([no, yes]).ask("checklist", {}).data["items"], ["q?"])
 
+    def test_quote_first_needs_a_real_quote_then_compares(self):
+        from examen.guards import QuoteFirst
+
+        class Scripted(Model):
+            name = "scripted"
+
+            def __init__(self, quote, same):
+                self.q, self.same, self.roles = quote, same, []
+
+            def ask(self, role, payload):
+                self.roles.append(role)
+                if role == "quote":
+                    return Reply({"quote": self.q}, 3)
+                if role == "compare":
+                    self.compared = payload
+                    return Reply({"same": self.same, "difference": "runs, not sold"}, 2)
+                return Reply({"pass": True}, 1)
+
+        page = "The Halvey Ferry Company runs boats between Port Seld and Kessick. It was founded in 1902."
+        claim = {"claim": "The Halvey Ferry Company sold boats between Port Seld and Kessick.", "source": page}
+        made_up = Scripted("The company sells boats to everyone.", True)
+        r = QuoteFirst(made_up).ask("support", claim)
+        self.assertFalse(r.data["supported"])
+        self.assertEqual(made_up.roles, ["quote"])  # an invented quote ends it before the comparison
+        real = Scripted("The Halvey Ferry Company runs boats between Port Seld and Kessick.", False)
+        r = QuoteFirst(real).ask("support", claim)
+        self.assertEqual((r.data["supported"], r.tokens), (False, 5))
+        self.assertEqual(real.compared["quote"], "The Halvey Ferry Company runs boats between Port Seld and Kessick.")
+        self.assertTrue(QuoteFirst(Scripted(page[:60], True)).ask("support", claim).data["supported"])
+        self.assertTrue(QuoteFirst(real).ask("check", {}).data["pass"])
+
     def test_specs_compose(self):
         from examen.models import family
         m = load_model("guarded:panel:fake+fake-flawed")
         self.assertEqual(m.name, "guarded:panel:fake+fake-flawed")
+        m = load_model("guarded:panel:quote:fake+quote:fake-flawed")
+        self.assertEqual(m.name, "guarded:panel:quote:fake+quote:fake-flawed")
+        self.assertEqual(family("quote:ollama:gemma3:12b"), "gemma")
         self.assertEqual(family("guarded:ollama:gemma3:12b"), "gemma")
         self.assertEqual(family("panel:ollama:gemma3:12b+claude"), "gemma")
 
