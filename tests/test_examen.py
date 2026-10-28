@@ -452,6 +452,16 @@ class GuardTests(unittest.TestCase):
         self.assertTrue(QuoteFirst(Scripted(page[:60], True)).ask("support", claim).data["supported"])
         self.assertTrue(QuoteFirst(real).ask("check", {}).data["pass"])
 
+        class Facts(Scripted):
+            def ask(self, role, payload):
+                if role == "compare":
+                    return Reply({"facts": [{"fact": "a", "in_quote": True}, {"fact": "b", "in_quote": self.same}]}, 2)
+                return super().ask(role, payload)
+
+        quote = "The Halvey Ferry Company runs boats between Port Seld and Kessick."
+        self.assertTrue(QuoteFirst(Facts(quote, True)).ask("support", claim).data["supported"])
+        self.assertFalse(QuoteFirst(Facts(quote, False)).ask("support", claim).data["supported"])
+
     def test_specs_compose(self):
         from examen.models import family
         m = load_model("guarded:panel:fake+fake-flawed")

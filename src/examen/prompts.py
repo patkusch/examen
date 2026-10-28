@@ -58,10 +58,11 @@ SYSTEM = {
         "Reply as JSON: {\"quote\": \"...\"}"
     ),
     "compare": (
-        "You compare a claim with a quote from a source. Check every part of the claim against the quote: who, what "
-        "was done, to what, when, where and how many. If any part of the claim differs from the quote, or the quote "
-        "does not say it, the answer is false. Name the part that differs. "
-        "Reply as JSON: {\"difference\": \"...\", \"same\": true} or {\"difference\": \"...\", \"same\": false}"
+        "You check a claim against a quote from a source. First split the claim into its separate facts. Then, for "
+        "each fact, say whether the quote states that same fact. A fact counts as stated if the quote says it in "
+        "other words. A fact does not count if the quote gives a different person, action, thing, time, place or "
+        "amount. Details the quote has but the claim leaves out do not matter: you are only checking what the claim "
+        "says. Reply as JSON: {\"facts\": [{\"fact\": \"...\", \"in_quote\": true}]}"
     ),
     "check": (
         "You grade a research report against one yes/no checklist question. Answer from the report text only; "

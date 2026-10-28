@@ -135,7 +135,8 @@ class FakeModel(Model):
         return {"quote": best if overlap(p["claim"], best) > 0 else ""}
 
     def _compare(self, p):
-        return {"same": self._support({"claim": p["claim"], "source": p["quote"]})["supported"], "difference": ""}
+        ok = self._support({"claim": p["claim"], "source": p["quote"]})["supported"]
+        return {"facts": [{"fact": p["claim"], "in_quote": ok}]}
 
     def _check(self, p):
         item, report = p["item"], p["report"]

@@ -95,7 +95,9 @@ class QuoteFirst(Model):
 
     Step 1: it copies the sentence from the passage closest to stating the claim.
     Step 2: code checks the quote really is in the passage and is a real sentence; if not, no.
-    Step 3: in a separate short question it compares the claim with the quote, part by part.
+    Step 3: in a separate short question it splits the claim into facts and says, for each, whether
+            the quote states it. Code backs the claim only if every fact is in the quote, so a claim
+            that says less than the page passes and one that says something else fails.
     The comparison sees one sentence instead of a whole passage, so small differences have
     nowhere to hide. Judges that cite evidence before scoring are reported to be more reliable.
     """
@@ -121,5 +123,10 @@ class QuoteFirst(Model):
             self.bad_quotes += 1
             return Reply({"supported": False, "why": "no exact quote from the page"}, q.tokens)
         c = self.inner.ask("compare", {"claim": payload["claim"], "quote": quote})
-        return Reply({"supported": truthy(c.data.get("same")), "quote": quote,
-                      "difference": c.data.get("difference", "")}, q.tokens + c.tokens)
+        facts = c.data.get("facts")
+        if isinstance(facts, list) and facts:
+            # The model splits the claim into facts; code decides: backed only if every fact is in the quote.
+            ok = all(isinstance(f, dict) and truthy(f.get("in_quote")) for f in facts)
+        else:
+            ok = truthy(c.data.get("same"))
+        return Reply({"supported": ok, "quote": quote, "facts": facts}, q.tokens + c.tokens)
