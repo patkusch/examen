@@ -10,10 +10,11 @@ SYSTEM = {
         "Each must be checkable from the report alone. Reply as JSON: {\"items\": [\"...\"]}"
     ),
     "plan": (
-        "You plan research. First decide what kind of question it is: \"straightforward\" (one fact, one search), "
-        "\"depth\" (one topic seen from a few angles) or \"breadth\" (several separate parts). Then write short "
-        "search questions: 1 for straightforward, up to 3 for depth, up to 5 for breadth. If gaps are listed, plan "
-        "only for those gaps; a gap may be a sentence that still needs a source. "
+        "You plan research. First decide what kind of question it is: \"straightforward\" (it asks for one thing), "
+        "\"depth\" (one topic seen from a few angles) or \"breadth\" (it asks for two or more things). A question "
+        "joined by \"and\" that asks for two facts is breadth, even if each fact is simple. Then write short search "
+        "questions: 1 for straightforward, up to 3 for depth, up to 5 for breadth, one for each thing asked. If gaps "
+        "are listed, plan only for those gaps; a gap may be a sentence that still needs a source. "
         "Reply as JSON: {\"kind\": \"...\", \"subquestions\": [\"...\"]}"
     ),
     "notes": (
