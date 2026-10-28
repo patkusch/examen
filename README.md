@@ -69,21 +69,34 @@ So examen uses **one writer**, a few **read-only helpers** that each research on
 
 ## The examiner has to pass a test first
 
-A weak examiner makes every number meaningless, so `examen calibrate` tests it on 60 claims with known answers. Half are true: some copied from a page, some reworded. Half are false, each with one small change: a number or a name swapped, a "not" added, or a made-up detail tacked on.
+A weak examiner makes every number meaningless, so `examen calibrate` tests it on 84 claims with known answers. Half are true: some copied from a page, some reworded. Half are false, each with one small change of one of seven kinds:
 
-To be trusted, it must get 85% right, let through no more than 10% of the false claims, and reject no more than 15% of the true ones.
+- a number swapped, a name swapped, a "not" added, a made-up detail tacked on;
+- held out from examen's own code checks: a verb changed ("built" becomes "demolished"), a one-word place swapped, a number written as a word changed ("three" becomes "four").
+
+To be trusted, it must get 85% right, let through no more than 10% of the false claims, reject no more than 15% of the true ones, and let through no more than 10% of the held-out kinds on their own. That last rule stops anyone fitting checks to the test.
+
+Any examiner can be strengthened two ways:
+
+- `guarded:<examiner>` puts code checks in front of it. A claim whose numbers or names are not on the page, or that adds a "not" the page lacks, is rejected without asking the model. The checks can only say no.
+- `panel:<a>+<b>` asks several examiners and backs a claim only if all of them do. Different models miss different things.
 
 The built-in stand-in examiner fails, which is the point of the test:
 
-| False claims it let through | |
-|---|---|
-| A number swapped | 0 of 8 |
-| A name swapped | 4 of 8 |
-| A "not" added | 7 of 7 |
-| A made-up detail tacked on | 0 of 7 |
-| **True claims it wrongly rejected** | **2 of 15 reworded ones** |
+| False claims it let through | plain | with code checks |
+|---|---|---|
+| A number swapped | 0 of 6 | 0 of 6 |
+| A name swapped | 1 of 6 | 0 of 6 |
+| A "not" added | 6 of 6 | 0 of 6 |
+| A made-up detail tacked on | 0 of 6 | 0 of 6 |
+| A verb changed (held out) | 6 of 6 | 6 of 6 |
+| A place swapped (held out) | 6 of 6 | 0 of 6 |
+| A number word changed (held out) | 6 of 6 | 6 of 6 |
+| **True claims it wrongly rejected** | **6 of 42** | **6 of 42** |
 
-Real local models fail too. gemma3 12B gets 87% right but passes 27% of false claims; gemma3 4B passes 33%, including 6 of 7 claims with a made-up detail added. Neither rejected a true claim. Details in [docs/runs](docs/runs/2026-10-27-gemma3-calibration.md).
+The name check also catches swapped places, because a place is a name. Changed verbs and number words get past every code check, so they test the model alone.
+
+On the earlier 60-claim test, real local models failed too. gemma3 12B got 87% right but passed 27% of false claims; gemma3 4B passed 33%, including 6 of 7 claims with a made-up detail added. Neither rejected a true claim. Details in [docs/runs](docs/runs/2026-10-27-gemma3-calibration.md).
 
 **Wrongly rejecting a true sentence is not harmless.** The loop removes sentences the examiner rejects, so a true fact gets deleted. The fair test below caught exactly that.
 
