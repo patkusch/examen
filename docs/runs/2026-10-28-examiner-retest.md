@@ -81,3 +81,34 @@ show their evidence first are reported to be more reliable, and it targets readi
      4B had given every two-part question a single search.
 - The examiner is being retested on both sets with these fixes; the bench runs again only if it
   passes both.
+
+## Update 2026-10-29: the fact-by-fact examiner fails narrowly; bench not run
+
+Same examiner (12B, code checks, quote first) with the fact-by-fact comparison, on the first set of
+claims (`--label-seed 7`, now including shortened true claims). 13 min 19 s.
+
+| | Result | Bar |
+|---|---|---|
+| Right | 90% | at least 85% |
+| False claims let through | 7% (3 of 42) | at most 10% |
+| Held-out kinds let through | **11% (2 of 18)** | at most 10% |
+| True claims rejected | 12% (5 of 42) | at most 15% |
+| — shortened true claims | 0 of 6 | |
+| — reworded true claims | 5 of 14 | |
+
+What slipped through: 2 changed verbs and 1 made-up detail. Splitting the claim into facts fixed
+the shortened claims but made the model a little less strict about wording. That is a real weakness.
+
+The 5 rejected true claims are all of the "reworded" kind, which is a page sentence with "The …
+page records this:" put in front. The model lists "the page records this" as a fact, cannot find
+it in the quote, and rejects the claim. No real writer words a sentence that way, so this is
+partly a flaw in the test. It is recorded here, not fixed: changing the test after failing it would
+be moving the goalposts. A better rewording kind can be added later, decided before it is run.
+
+**Decision.** Not trusted, so, as the plan requires, the bench was not run.
+
+**Where this leaves the examiner.** The previous version (one "same or not" question) passed both
+sets of claims but rejected true claims that say less than the page, which real writers produce all
+the time. The fact-by-fact version handles those but lets a few changed verbs through. Neither is
+good enough to grade the bench. A stronger model from another family (Claude, needs an API key)
+remains the plan's first choice.

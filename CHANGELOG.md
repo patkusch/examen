@@ -6,6 +6,11 @@
 - `panel:<a>+<b>`: a claim is backed only if every examiner agrees.
 - `calibrate` prints a readable summary (`--json` for the full result) and how many verdicts the code checks made.
 - `make calibrate-guarded`.
+- `quote:<examiner>`: the examiner copies the page sentence closest to the claim (checked by code), then marks each fact in the claim as in that sentence or not; code backs the claim only if every fact is there.
+- Calibration has shortened true claims, and `--label-seed` draws a fresh set of claims.
+- `bench --resume` carries on a stopped bench.
+- Planner: a question that asks for two things gets one search per thing.
+- Live (docs/runs/2026-10-28-examiner-retest.md): no examiner is trusted yet, so the bench has not run.
 - Live retest (docs/runs/2026-10-28-examiner-retest.md): the gemma3 panel with code checks reaches 95% right and 9.5% false let through, but misses 4 of 6 changed verbs, so it is not trusted and the bench was not run.
 
 ## 0.3.0 (2026-10-27)
