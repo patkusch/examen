@@ -96,6 +96,8 @@ The built-in stand-in examiner fails, which is the point of the test:
 
 The name check also catches swapped places, because a place is a name. Changed verbs and number words get past every code check, so they test the model alone.
 
+Real local models, on the 84-claim test: the best was a panel of gemma3 12B and 4B with code checks. It got 95% right, let through 9.5% of false claims and rejected no true ones, but still let through 4 of 6 changed verbs, so it is not trusted. Details in [docs/runs](docs/runs/2026-10-28-examiner-retest.md).
+
 On the earlier 60-claim test, real local models failed too. gemma3 12B got 87% right but passed 27% of false claims; gemma3 4B passed 33%, including 6 of 7 claims with a made-up detail added. Neither rejected a true claim. Details in [docs/runs](docs/runs/2026-10-27-gemma3-calibration.md).
 
 **Wrongly rejecting a true sentence is not harmless.** The loop removes sentences the examiner rejects, so a true fact gets deleted. The fair test below caught exactly that.

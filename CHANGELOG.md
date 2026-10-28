@@ -6,6 +6,7 @@
 - `panel:<a>+<b>`: a claim is backed only if every examiner agrees.
 - `calibrate` prints a readable summary (`--json` for the full result) and how many verdicts the code checks made.
 - `make calibrate-guarded`.
+- Live retest (docs/runs/2026-10-28-examiner-retest.md): the gemma3 panel with code checks reaches 95% right and 9.5% false let through, but misses 4 of 6 changed verbs, so it is not trusted and the bench was not run.
 
 ## 0.3.0 (2026-10-27)
 - `--require-trusted` refuses to run with an examiner that has not passed `examen calibrate`.
