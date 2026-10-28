@@ -118,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
     common(b)
 
     c = sub.add_parser("calibrate", help="measure the examiner on claims with known answers")
-    c.add_argument("--pairs", type=int, default=60)
+    c.add_argument("--pairs", type=int, default=84)
     c.add_argument("--runs", type=int, default=2, help="times each claim is judged, each with its own seed")
     common(c, writer=False)
 
@@ -127,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
 
     lab = sub.add_parser("labels", help="write the labelled claim pairs to a file")
     lab.add_argument("out")
-    lab.add_argument("--pairs", type=int, default=60)
+    lab.add_argument("--pairs", type=int, default=84)
 
     a = ap.parse_args(argv)
 

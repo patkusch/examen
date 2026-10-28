@@ -227,7 +227,8 @@ class BenchAndCalibrationTests(unittest.TestCase):
         labels = make_labels(40)
         self.assertEqual(sum(x["label"] for x in labels), 20)
         kinds = {x["kind"] for x in labels}
-        self.assertEqual(kinds, {"verbatim", "reworded", "number", "name", "negation", "padding"})
+        self.assertEqual(kinds, {"verbatim", "reworded", "number", "name", "negation", "padding",
+                                 "verb", "place", "count_word"})
         for x in labels:
             if not x["label"]:
                 self.assertNotIn(x["claim"], x["source"])
@@ -237,6 +238,25 @@ class BenchAndCalibrationTests(unittest.TestCase):
         self.assertEqual(res["pairs"], 60)
         self.assertEqual(res["self_agreement"], 1.0)
         self.assertGreater(res["false_pass_rate"], 0.10)
+        self.assertFalse(res["trusted"])
+
+    def test_held_out_kinds_must_pass_on_their_own(self):
+        from examen.calibrate import HELD_OUT
+
+        class OnlyTargeted(Model):
+            """Catches every targeted trick, misses every held-out one: fitted to the test."""
+            name = "fitted"
+
+            def ask(self, role, payload):
+                claim = payload["claim"]
+                fooled = any(x["claim"] == claim and x["kind"] in HELD_OUT for x in self.labels)
+                ok = fooled or claim in payload["source"] or " page records this: " in claim
+                return Reply({"supported": ok}, 1)
+
+        m = OnlyTargeted()
+        m.labels = make_labels()
+        res = calibrate(m, m.labels)
+        self.assertEqual(res["held_out_false_pass_rate"], 1.0)
         self.assertFalse(res["trusted"])
 
     def test_perfect_examiner_is_trusted(self):

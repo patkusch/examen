@@ -27,7 +27,17 @@ NAME = re.compile(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b")
 
 PADDING = ", after a long dispute with the mainland government"
 NEGATE = re.compile(r"\b(is|was|are|were|has|had|can)\b")
-KINDS = ("number", "name", "negation", "padding")
+VERBS = {"built": "demolished", "founded": "closed", "won": "lost", "restored": "demolished", "rebuilt": "abandoned",
+         "began": "ended", "retired": "returned", "designed": "copied", "created": "abolished", "hosts": "banned",
+         "runs": "sold", "sells": "buys", "arrive": "leave", "automated": "abandoned", "trained": "taught",
+         "moved": "returned", "campaigned": "argued", "destroyed": "spared", "named": "renamed", "raised": "lost"}
+PLACES = ["Halvey", "Ostra", "Kessick", "Aberlin", "Tarrin", "Mardale"]
+COUNTS = {"two": "three", "three": "four", "four": "six", "nine": "seven", "twelve": "ten", "ten": "twelve"}
+# Kinds examen's code checks were built to catch, and kinds held out from them. An examiner must pass
+# the held-out kinds on their own too, so code checks cannot simply be fitted to the test.
+TARGETED = ("number", "name", "negation", "padding")
+HELD_OUT = ("verb", "place", "count_word")
+KINDS = TARGETED + HELD_OUT
 
 
 def _falsify(kind: str, s: str, rng: random.Random, names: list[str]) -> str | None:
@@ -49,10 +59,22 @@ def _falsify(kind: str, s: str, rng: random.Random, names: list[str]) -> str | N
         return s[: m.end()] + " not" + s[m.end():] if m else None
     if kind == "padding":  # true sentence plus a made-up detail
         return s.rstrip(".") + PADDING + "."
+    if kind == "verb":
+        m = re.search(r"\b(" + "|".join(VERBS) + r")\b", s)
+        return s[: m.start()] + VERBS[m.group(1)] + s[m.end():] if m else None
+    if kind == "place":
+        found = [p for p in PLACES if re.search(rf"\b{p}\b", s)]
+        if not found:
+            return None
+        old = rng.choice(found)
+        return re.sub(rf"\b{old}\b", rng.choice([p for p in PLACES if p not in s]), s, count=1)
+    if kind == "count_word":
+        m = re.search(r"\b(" + "|".join(COUNTS) + r")\b", s)
+        return s[: m.start()] + COUNTS[m.group(1)] + s[m.end():] if m else None
     raise ValueError(kind)
 
 
-def make_labels(n: int = 60, seed: int = 7) -> list[dict]:
+def make_labels(n: int = 84, seed: int = 7) -> list[dict]:
     """n/2 true claims copied from pages, n/2 false ones, the false kinds taking turns."""
     corpus = load_corpus()
     rng = random.Random(seed)
@@ -93,6 +115,8 @@ def calibrate(examiner: Model, labels: list[dict], runs: int = 2) -> dict:
     false_pass = fp / n_false if n_false else 0.0
     n_true = len(labels) - n_false
     false_reject = fn / n_true if n_true else 0.0
+    held = [(v, x) for v, x in zip(first, labels) if x["kind"] in HELD_OUT]
+    held_pass = sum(v for v, _ in held) / len(held) if held else 0.0
     return {
         "examiner": examiner.name, "pairs": len(labels), "accuracy": round(acc, 4),
         "passed_false_claims": fp, "rejected_true_claims": fn,
@@ -105,6 +129,9 @@ def calibrate(examiner: Model, labels: list[dict], runs: int = 2) -> dict:
         "false_reject_by_kind": {k: f"{sum(not v for v, x in zip(first, labels) if x['kind'] == k)} of "
                                     f"{sum(x['kind'] == k for x in labels)}"
                                  for k in ("verbatim", "reworded") if any(x['kind'] == k for x in labels)},
-        "trusted": acc >= TRUST_BAR and false_pass <= FALSE_PASS_LIMIT and false_reject <= FALSE_REJECT_LIMIT,
-        "bar": {"accuracy": TRUST_BAR, "false_pass_rate": FALSE_PASS_LIMIT, "false_reject_rate": FALSE_REJECT_LIMIT},
+        "held_out_false_pass_rate": round(held_pass, 4),
+        "trusted": (acc >= TRUST_BAR and false_pass <= FALSE_PASS_LIMIT and false_reject <= FALSE_REJECT_LIMIT
+                    and held_pass <= FALSE_PASS_LIMIT),
+        "bar": {"accuracy": TRUST_BAR, "false_pass_rate": FALSE_PASS_LIMIT, "false_reject_rate": FALSE_REJECT_LIMIT,
+                "held_out_false_pass_rate": FALSE_PASS_LIMIT},
     }
