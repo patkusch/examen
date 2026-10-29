@@ -13,7 +13,9 @@
 - Reworded true test claims now read like a writer's (subject named instead of "He/It", plain synonyms), decided before running; `calibrate --misses` lists every wrong verdict; two malformed false claims fixed.
 - Code checks no longer reject true claims: "According" is not a name, and possessives match ("Seld's" is "Seld"). A test makes sure they reject no true claim in six sets.
 - `labels --seed`; an index of live runs in docs/runs.
-- Live (docs/runs/2026-10-29-natural-rewording.md): first read as the model rejecting most reworded true claims; corrected, the code checks did. Retest under way; the bench has not run.
+- Live (docs/runs/2026-10-29-natural-rewording.md): first read as the model rejecting most reworded true claims; corrected, the code checks did.
+- Live retest after the fix (docs/runs/2026-10-29-guard-fix-retest.md): 94–98% right on five sets, passed three; failed two by one changed verb each, so not trusted and the bench has not run.
+- One verb swap ("campaigned" to "argued") barely changed the meaning; removed, with a test. The next calibration must pass seven sets.
 - Live retest (docs/runs/2026-10-28-examiner-retest.md): the gemma3 panel with code checks reaches 95% right and 9.5% false let through, but misses 4 of 6 changed verbs, so it is not trusted and the bench was not run.
 
 ## 0.3.0 (2026-10-27)
