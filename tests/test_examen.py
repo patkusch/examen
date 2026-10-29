@@ -297,6 +297,12 @@ class BenchAndCalibrationTests(unittest.TestCase):
 
         self.assertTrue(calibrate(Oracle(), labels)["trusted"])
 
+    def test_false_claims_are_well_formed(self):
+        for seed in (7, 11, 13):
+            for x in make_labels(seed=seed):
+                self.assertNotRegex(x["claim"], r"\bnot no\b|\bnot never\b")
+                self.assertNotIn("MV The", x["claim"])
+
     def test_reworded_claims_read_like_writing(self):
         for x in make_labels():
             if x["kind"] == "reworded":

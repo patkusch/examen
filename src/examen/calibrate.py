@@ -82,12 +82,16 @@ def _falsify(kind: str, s: str, rng: random.Random, names: list[str]) -> str | N
         old = rng.choice(nums)
         return s.replace(old, str(int(old.replace(",", "")) + rng.choice([3, 7, 11, 19])), 1)
     if kind == "name":
-        found = NAME.findall(s)
-        others = [x for x in names if x not in s]
+        # "The Seld" is not a name; swapping it in made "the MV The Seld".
+        found = [x for x in NAME.findall(s) if not x.startswith("The ")]
+        others = [x for x in names if x not in s and not x.startswith("The ")]
         if not found or not others:
             return None
         return s.replace(rng.choice(found), rng.choice(others), 1)
     if kind == "negation":
+        # A sentence that already says "no" or "not" would become a double negative ("has not no airport").
+        if re.search(r"\b(no|not|never|none)\b", s, re.I):
+            return None
         m = NEGATE.search(s)
         return s[: m.end()] + " not" + s[m.end():] if m else None
     if kind == "padding":  # true sentence plus a made-up detail
