@@ -60,3 +60,14 @@ replaced, decided here before anything is run:
 - **Any change to an examiner is checked on two fresh sets of claims** (label seeds 11 and 13)
   that were not looked at while making the change. It is trusted only if it passes all three sets
   (7, 11, 13). The bars do not change.
+
+## Added 2026-10-29 evening, after the five-set retest and before any further run
+
+One false test claim was faulty: "Corrie also argued for the creation of the Brenna Council",
+where the page says "campaigned for". The two mean nearly the same thing. Without it the examiner
+would have passed all five sets; with it, it failed two. The result stands as **not trusted**,
+because changing the test after seeing the result is the thing this plan exists to prevent.
+
+- That verb swap is removed from the claim maker, and a test keeps it out.
+- The next calibration is trusted only if it passes **all of** seeds 7, 11, 13, 17 and 19 (redrawn
+  without the faulty swap) **and** two sets never drawn before (seeds 23 and 29). The bars do not change.
