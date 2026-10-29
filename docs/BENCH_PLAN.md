@@ -43,3 +43,20 @@ Written 2026-10-27, before any real-model run, so the pass mark cannot be moved 
 - Calibration showed these examiners give the same verdict when re-asked with a new seed (60 of 60,
   temperature 0.2). If that holds for the chosen examiner, scoring once instead of three times is
   allowed, and is reported.
+
+## Added 2026-10-29, before the new test claims are made or run
+
+The "reworded" true claims put "The … page records this:" in front of a page sentence. No writer
+words a sentence that way, and the fact-by-fact examiner rejected 5 of 14 of them for it. They are
+replaced, decided here before anything is run:
+
+- **New reworded claims:** the page sentence with what a writer actually does to it. A leading
+  "He", "She", "It" or "Its" is replaced by the page's subject ("He designed…" becomes "Thomas Varga
+  designed…"), and common words are swapped for plain synonyms (about/around, residents/people,
+  built/constructed, founded/set up, largest/biggest). If neither applies, the sentence starts
+  "According to the … page," which is how writers do cite.
+- **The examiner is shown the passage the scorer would choose for the reworded claim**, as in a
+  real run, not the passage chosen for the original sentence.
+- **Any change to an examiner is checked on two fresh sets of claims** (label seeds 11 and 13)
+  that were not looked at while making the change. It is trusted only if it passes all three sets
+  (7, 11, 13). The bars do not change.
