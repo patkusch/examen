@@ -552,6 +552,12 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("stopped", err)
 
+    def test_labels_writes_the_chosen_set(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._run("labels", d + "/a.jsonl", "--seed", "11")
+            got = [json.loads(x)["claim"] for x in Path(d, "a.jsonl").read_text().splitlines()]
+        self.assertEqual(got, [x["claim"] for x in make_labels(seed=11)])
+
     def test_show_reads_the_newest_run(self):
         with tempfile.TemporaryDirectory() as d:
             self._run("demo", "--receipts", d)

@@ -149,6 +149,7 @@ def main(argv: list[str] | None = None) -> int:
     lab = sub.add_parser("labels", help="write the labelled claim pairs to a file")
     lab.add_argument("out")
     lab.add_argument("--pairs", type=int, default=84)
+    lab.add_argument("--seed", type=int, default=7, help="which set of test claims to write")
 
     a = ap.parse_args(argv)
 
@@ -156,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         return _show(Path(a.folder))
 
     if a.cmd == "labels":
-        Path(a.out).write_text("\n".join(json.dumps(x) for x in make_labels(a.pairs)) + "\n")
+        Path(a.out).write_text("\n".join(json.dumps(x) for x in make_labels(a.pairs, seed=a.seed)) + "\n")
         print(f"wrote {a.pairs} pairs to {a.out}")
         return 0
 
