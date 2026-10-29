@@ -20,11 +20,29 @@ TRUST_BAR = 0.85
 FALSE_PASS_LIMIT = 0.10
 # Rejecting a true sentence is not harmless either: the loop then deletes a true fact.
 FALSE_REJECT_LIMIT = 0.15
-LEAD_IN = "The {title} page records this: "
+# How writers really reword a page sentence (decided in BENCH_PLAN.md on 2026-10-29, before running):
+# name the subject instead of "He/She/It", and use plain synonyms. If neither applies, cite the page.
+SYNONYMS = {"about": "around", "residents": "people", "built": "constructed", "founded": "established",
+            "largest": "biggest", "began": "started", "runs": "operates", "every": "each"}
+PRONOUNS = {"He": "{t}", "She": "{t}", "It": "{t}", "Its": "{t}'s"}
+LEAD_IN = "According to the {title} page, "
 # Real writers summarise, so a true claim often leaves out part of its sentence. Found live on
 # 2026-10-29: an examiner rejected "The Seld Lighthouse was built in 1871" because the page also says who.
 CUTS = (" by the ", ", and ", ", which ", ", where ", ", most of whom ", ", with ", ", including ", ", a ", "; ",
         " and through ")
+
+
+def _reword(s: str, title: str) -> str:
+    """A true sentence written the way a writer would put it, not copied word for word."""
+    first, _, rest = s.partition(" ")
+    out = PRONOUNS[first].format(t=title) + " " + rest if first in PRONOUNS else s
+    for a, b in SYNONYMS.items():
+        out = re.sub(rf"\b{a}\b", b, out)
+        out = re.sub(rf"\b{a.capitalize()}\b", b.capitalize(), out)
+    if out != s:
+        return out
+    lead = s[0].lower() + s[1:] if first in ("The", "A", "An") else s
+    return LEAD_IN.format(title=title) + lead
 
 
 def _shorten(s: str) -> str | None:
@@ -110,7 +128,9 @@ def make_labels(n: int = 84, seed: int = 7) -> list[dict]:
                 if i % 3 != 1 and short:
                     out.append({"claim": short, "source": passage, "label": True, "kind": "shortened", "doc": d["id"]})
                 elif i % 3 == 1:
-                    out.append({"claim": LEAD_IN.format(title=d["title"]) + true, "source": passage, "label": True,
+                    # The examiner sees the passage a real run would pick for the reworded sentence.
+                    said = _reword(true, d["title"])
+                    out.append({"claim": said, "source": best_passage(d["text"], said), "label": True,
                                 "kind": "reworded", "doc": d["id"]})
                 else:
                     out.append({"claim": true, "source": passage, "label": True, "kind": "verbatim", "doc": d["id"]})
