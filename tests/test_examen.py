@@ -286,15 +286,22 @@ class BenchAndCalibrationTests(unittest.TestCase):
         self.assertFalse(res["trusted"])
 
     def test_perfect_examiner_is_trusted(self):
+        labels = make_labels(60)
+        key = {x["claim"]: x["label"] for x in labels}
+
         class Oracle(Model):
             name = "oracle"
 
             def ask(self, role, payload):
-                claim = payload["claim"].split(": ", 1)[-1] if payload["claim"].startswith("The ") and \
-                    " page records this: " in payload["claim"] else payload["claim"]
-                return Reply({"supported": claim in payload["source"]}, 1)
+                return Reply({"supported": key[payload["claim"]]}, 1)
 
-        self.assertTrue(calibrate(Oracle(), make_labels(60))["trusted"])
+        self.assertTrue(calibrate(Oracle(), labels)["trusted"])
+
+    def test_reworded_claims_read_like_writing(self):
+        for x in make_labels():
+            if x["kind"] == "reworded":
+                self.assertNotIn("records this", x["claim"])
+                self.assertNotEqual(x["claim"], x["source"])
 
 
 class BackendTests(unittest.TestCase):
