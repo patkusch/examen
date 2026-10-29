@@ -428,6 +428,13 @@ class GuardTests(unittest.TestCase):
         self.assertIsNone(veto("Port Seld's harbour was rebuilt.", "Its harbour in Port Seld was rebuilt."))
         self.assertIn("name", veto("Kessick's harbour was rebuilt.", "Its harbour in Port Seld was rebuilt."))
 
+    def test_changed_verbs_change_the_meaning(self):
+        # "campaigned for" became "argued for" in a live run: nearly the same, so not a false claim
+        for seed in (7, 11, 13, 17, 19):
+            for x in make_labels(seed=seed):
+                if x["kind"] == "verb":
+                    self.assertNotIn("argued", x["claim"], (seed, x["claim"]))
+
     def test_guarded_only_ever_turns_yes_into_no(self):
         from examen.guards import Guarded
 

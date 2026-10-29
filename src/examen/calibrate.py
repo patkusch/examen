@@ -63,7 +63,7 @@ NEGATE = re.compile(r"\b(is|was|are|were|has|had|can)\b")
 VERBS = {"built": "demolished", "founded": "closed", "won": "lost", "restored": "demolished", "rebuilt": "abandoned",
          "began": "ended", "retired": "returned", "designed": "copied", "created": "abolished", "hosts": "banned",
          "runs": "sold", "sells": "buys", "arrive": "leave", "automated": "abandoned", "trained": "taught",
-         "moved": "returned", "campaigned": "argued", "destroyed": "spared", "named": "renamed", "raised": "lost"}
+         "moved": "returned", "destroyed": "spared", "named": "renamed", "raised": "lost"}
 PLACES = ["Halvey", "Ostra", "Kessick", "Aberlin", "Tarrin", "Mardale"]
 COUNTS = {"two": "three", "three": "four", "four": "six", "nine": "seven", "twelve": "ten", "ten": "twelve"}
 # Kinds examen's code checks were built to catch, and kinds held out from them. An examiner must pass
