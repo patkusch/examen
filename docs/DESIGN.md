@@ -156,3 +156,21 @@ The risk is fitting checks to the test. So calibration gained three kinds the ch
 designed for (a changed verb, a one-word place swap, a changed number word), and an examiner must
 let through no more than 10% of those on their own. One honest caveat: the name check also catches
 place swaps, since a place is a name. Verb and number-word changes reach the model untouched.
+
+## 8. What three days of examiner testing taught (2026-10-27 to 2026-10-29)
+
+Each fix exposed a different failure, and every one was found by the test, not by reading the code:
+
+| Change | What it fixed | What it exposed |
+|---|---|---|
+| Seeds varied per repeat | Wobble was always zero by construction | The models really do give the same answer at temperature 0.2 |
+| Code checks (numbers, names, "not") | Every swap of those kinds | Changed verbs, which no code check sees |
+| Two-model panel | False claims let through fell from 24% to 9.5% | Both models miss the same verb changes |
+| Quote first, then compare | Changed verbs | True claims that say less than the page were rejected |
+| Fact by fact, code decides | Shortened true claims | A few changed verbs slipped back through |
+| Natural rewording in the test | The old lead-in kept page sentences word for word | examen's own name check vetoed "According…" and possessives |
+
+Three habits made this visible: false claims held back from the code checks, fresh sets of claims
+for every change, and listing every wrong verdict (`calibrate --misses`). The last one found the
+code-check bug in minutes, after a day of blaming the model. A test claim is only useful if
+someone reads the ones that went wrong.
