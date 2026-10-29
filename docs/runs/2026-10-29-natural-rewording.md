@@ -1,5 +1,11 @@
 # The 12B examiner on naturally reworded claims, 2026-10-29
 
+> **Correction, later the same day.** The conclusion below is wrong. Almost all of the rejected
+> reworded true claims (8 of the 8–9 in each set) were rejected by examen's own code checks, not by
+> the model: the name check treated "According" at the start of a sentence as a name, and missed
+> possessives ("Port Seld's" vs "Port Seld"). Those checks are fixed and a test now makes sure they
+> reject no true test claim. The examiner is being retested. The table is kept as it was measured.
+
 Examiner: gemma3 12B with code checks, quoting the page sentence, then marking each fact as in the
 quote or not. Writers' rewording was made the way decided in BENCH_PLAN.md that morning (name the
 subject instead of "He/It", plain synonyms, "According to the … page," otherwise). Three sets of
