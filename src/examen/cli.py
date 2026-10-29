@@ -138,6 +138,7 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--pairs", type=int, default=84)
     c.add_argument("--runs", type=int, default=2, help="times each claim is judged, each with its own seed")
     c.add_argument("--json", action="store_true", help="print the full result as JSON")
+    c.add_argument("--misses", action="store_true", help="also list every claim the examiner got wrong")
     c.add_argument("--label-seed", type=int, default=7,
                    help="draws a different set of test claims; use a new one to check a result was not fitted to one set")
     common(c, writer=False)
@@ -165,6 +166,10 @@ def main(argv: list[str] | None = None) -> int:
         res["label_seed"] = a.label_seed
         Receipts(Path(a.receipts) / "calibration").write_json(ex.name.replace(":", "_").replace("/", "_") + ".json", res)
         print(json.dumps(res, indent=2) if a.json else _calibration_summary(res))
+        if a.misses and not a.json:
+            for m in res["misses"]:
+                verdict = "rejected, but true" if m["true"] else "passed, but false"
+                print(f"  [{m['kind']}] {verdict}: {m['claim']}")
         return 0
 
     if a.cmd == "demo":

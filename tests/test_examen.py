@@ -543,7 +543,8 @@ class CliTests(unittest.TestCase):
             code, out, _ = self._run("calibrate", "--receipts", d, "--pairs", "8", "--runs", "3", "--json")
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(out)["pairs"], 8)
-            _, text, _ = self._run("calibrate", "--receipts", d, "--examiner", "guarded:fake")
+            _, text, _ = self._run("calibrate", "--receipts", d, "--examiner", "guarded:fake", "--misses")
+        self.assertIn("passed, but false", text)
         self.assertIn("NOT TRUSTED", text)
         self.assertIn("decided by code checks", text)
 

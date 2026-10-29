@@ -150,6 +150,8 @@ def calibrate(examiner: Model, labels: list[dict], runs: int = 2) -> dict:
                                     f"{sum(x['kind'] == k for x in labels)}"
                                  for k in ("verbatim", "reworded", "shortened") if any(x['kind'] == k for x in labels)},
         "held_out_false_pass_rate": round(held_pass, 4),
+        "misses": [{"kind": x["kind"], "true": x["label"], "claim": x["claim"]}
+                   for v, x in zip(first, labels) if v != x["label"]],
         # How many first-run verdicts code made without asking the model (guarded examiners only).
         "decided_by_code": vetoes,
         "trusted": (acc >= TRUST_BAR and false_pass <= FALSE_PASS_LIMIT and false_reject <= FALSE_REJECT_LIMIT
