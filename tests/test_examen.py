@@ -418,6 +418,16 @@ class GuardTests(unittest.TestCase):
         self.assertIsNone(veto("Ostra has no airport.", "Ostra has no airport; visitors arrive by boat."))
         self.assertIsNone(veto("About 4,200 people live there.", "home to about 4200 people"))
 
+    def test_code_checks_never_reject_a_true_test_claim(self):
+        from examen.guards import veto
+        for seed in (7, 11, 13, 17, 19, 23):
+            for x in make_labels(seed=seed):
+                if x["label"]:
+                    self.assertIsNone(veto(x["claim"], x["source"]), (seed, x["claim"]))
+        self.assertIsNone(veto("According to the Ostra page, Ostra has no airport.", "Ostra has no airport."))
+        self.assertIsNone(veto("Port Seld's harbour was rebuilt.", "Its harbour in Port Seld was rebuilt."))
+        self.assertIn("name", veto("Kessick's harbour was rebuilt.", "Its harbour in Port Seld was rebuilt."))
+
     def test_guarded_only_ever_turns_yes_into_no(self):
         from examen.guards import Guarded
 

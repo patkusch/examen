@@ -16,7 +16,12 @@ CAPS = re.compile(r"\b[A-Z][a-zA-Z'\-]+")
 NEG = re.compile(r"\b(not|never|no|none|nobody|nothing|neither|nor)\b|n't\b", re.I)
 COMMON_CAPS = {"The", "A", "An", "It", "Its", "He", "She", "His", "Her", "They", "Their", "This", "That", "These",
                "Those", "There", "In", "On", "At", "By", "For", "From", "After", "Before", "Since", "As", "And",
-               "But", "Or", "Today", "Most", "Some", "Many", "Besides", "Both", "Each", "One", "When", "While"}
+               "But", "Or", "Today", "Most", "Some", "Many", "Besides", "Both", "Each", "One", "When", "While",
+               # Ordinary words that start sentences. "According" here once vetoed every true claim that
+               # began "According to the ... page," (found 2026-10-29).
+               "According", "However", "Also", "Currently", "Although", "Because", "During", "Over", "Under",
+               "Every", "Several", "About", "Around", "Only", "Unlike", "Like", "Despite", "Following", "Later",
+               "Earlier", "Until", "Within", "Without", "Yet", "So", "Then", "Now", "Here", "Our", "We", "You"}
 
 
 def veto(claim: str, passage: str) -> str | None:
@@ -26,8 +31,10 @@ def veto(claim: str, passage: str) -> str | None:
     if nums - have:
         return "number not on the page: " + ", ".join(sorted(nums - have))
     # Compared ignoring case: "About" at the start of a sentence is the page's "about", not a name.
-    words = {w.lower() for w in re.findall(r"[A-Za-z'\-]+", passage)}
-    missing = sorted({w for w in CAPS.findall(claim) if w not in COMMON_CAPS and w.lower() not in words})
+    words = {re.sub(r"'s$", "", w.lower()) for w in re.findall(r"[A-Za-z'\-]+", passage)}
+    # "Seld's" is the page's "Seld": compare names without a possessive ending.
+    caps = {re.sub(r"'s$", "", w) for w in CAPS.findall(claim)}
+    missing = sorted({w for w in caps if w not in COMMON_CAPS and w.lower() not in words})
     if missing:
         return "name not on the page: " + ", ".join(missing)
     if NEG.search(claim) and not NEG.search(passage):
