@@ -181,3 +181,7 @@ Researcher notes must quote their page word for word. A note whose quote is not 
 - Parallel helpers. They run one after another until the fair test shows they help.
 
 MIT licence.
+
+---
+
+[Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md)
